@@ -1,5 +1,6 @@
 import os
 import random
+import multiprocessing
 from multiprocessing import Pool
 from tqdm import tqdm
 import yaml
@@ -52,24 +53,37 @@ def canonicalize(smiles):
     return singlestepretrosynthesis.canonicalize_smiles(smiles)
 
 
-def extract_match_smiles_from_dataset(dataset:list, dataset_mol:list, template:str):
-    """
-    This function extracts the elements from a smiles dataset that match a certain template and canonicalizes them
-    """
-    template_mol    = Chem.MolFromSmarts(template)
-    match_ind       = [i for i in range(len(dataset_mol)) if dataset_mol[i].HasSubstructMatch(template_mol)]
-    dataset_sub     = [canonicalize(dataset[i]) for i in range(len(dataset)) if i in match_ind]
-    dataset_sub_mol = [dataset_mol[i] for i in range(len(dataset_mol)) if i in match_ind]
-    return dataset_sub, dataset_sub_mol
-
-
 #def extract_match_smiles_from_dataset_old(dataset:list, dataset_mol:list, template:str):
 #    """
 #    This function extracts the elements from a smiles dataset that match a certain template and canonicalizes them
 #    """
-#    template_mol  = Chem.MolFromSmarts(template)
-#    match_ind     = [mol.HasSubstructMatch(template_mol) for mol in dataset_mol]
-#    return [canonicalize(dataset[i]) for i in range(len(dataset)) if match_ind[i] == True], match_ind
+#    template_mol    = Chem.MolFromSmarts(template)
+#    match_ind       = [i for i in range(len(dataset_mol)) if dataset_mol[i].HasSubstructMatch(template_mol)]
+#    dataset_sub     = [canonicalize(dataset[i]) for i in range(len(dataset)) if i in match_ind]
+#    dataset_sub_mol = [dataset_mol[i] for i in range(len(dataset_mol)) if i in match_ind]
+#    return dataset_sub, dataset_sub_mol
+
+def extract_match_smiles_from_dataset(dataset:list, dataset_mol:list, template:str):
+    """
+    This function extracts the elements from a smiles dataset that match a certain template and canonicalizes them
+    """
+    #convert template to mol
+    template_mol    = Chem.MolFromSmarts(template)
+
+    #find indices in the dataset of the substructure matches
+    match_ind = [i for i, mol in enumerate(dataset_mol) if mol.HasSubstructMatch(template_mol)]
+
+    #create a subset of canonicalized smiles containing the substructure matches
+    dataset_match = [dataset[i] for i in match_ind]
+    processes = multiprocessing.cpu_count() - 2
+    pool = multiprocessing.Pool(processes=processes)
+    dataset_sub = pool.map(canonicalize, dataset_match)
+    pool.close()
+    pool.join()
+
+    #create subset of mol objects containing the substructure matches
+    dataset_sub_mol = [dataset_mol[i] for i in match_ind]
+    return dataset_sub, dataset_sub_mol
 
 
 def read_config(config_file):
