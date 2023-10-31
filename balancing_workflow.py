@@ -2,6 +2,7 @@ import os
 import pandas as pd
 from rdkit import Chem
 from rdkit.Chem import AllChem
+import multiprocessing
 import pickle
 from itertools import chain
 from ttlretro.single_step_retro import SingleStepRetrosynthesis
@@ -226,14 +227,37 @@ def find_reaction_template_of_hash(fulltemplate_df:pd.DataFrame, template):
 
 
 
+#def extract_match_smiles_from_dataset_old(dataset:list, dataset_mol:list, template:str):
+#    """
+#    This function extracts the elements from a smiles dataset that match a certain template and canonicalizes them
+#    """
+#    template_mol    = Chem.MolFromSmarts(template)
+#    match_ind       = [i for i in range(len(dataset_mol)) if dataset_mol[i].HasSubstructMatch(template_mol)]
+#    dataset_sub     = [canonicalize(dataset[i]) for i in range(len(dataset)) if i in match_ind]
+#    dataset_sub_mol = [dataset_mol[i] for i in range(len(dataset_mol)) if i in match_ind]
+#    return dataset_sub, dataset_sub_mol
+
+
 def extract_match_smiles_from_dataset(dataset:list, dataset_mol:list, template:str):
     """
     This function extracts the elements from a smiles dataset that match a certain template and canonicalizes them
     """
+    #convert template to mol
     template_mol    = Chem.MolFromSmarts(template)
-    match_ind       = [i for i in range(len(dataset_mol)) if dataset_mol[i].HasSubstructMatch(template_mol)]
-    dataset_sub     = [canonicalize(dataset[i]) for i in range(len(dataset)) if i in match_ind]
-    dataset_sub_mol = [dataset_mol[i] for i in range(len(dataset_mol)) if i in match_ind]
+
+    #find indices in the dataset of the substructure matches
+    match_ind = [i for i, mol in enumerate(dataset_mol) if mol.HasSubstructMatch(template_mol)]
+
+    #create a subset of canonicalized smiles containing the substructure matches
+    dataset_match = [dataset[i] for i in match_ind]
+    processes = multiprocessing.cpu_count() - 2
+    pool = multiprocessing.Pool(processes=processes)
+    dataset_sub = pool.map(canonicalize, dataset_match)
+    pool.close()
+    pool.join()
+
+    #create subset of mol objects containing the substructure matches
+    dataset_sub_mol = [dataset_mol[i] for i in match_ind]
     return dataset_sub, dataset_sub_mol
 
 
