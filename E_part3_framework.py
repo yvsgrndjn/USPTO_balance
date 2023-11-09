@@ -6,39 +6,29 @@ import sys
 import argparse
 from tqdm import tqdm
 from itertools import islice
+import multiprocessing
 from ttlretro.single_step_retro import SingleStepRetrosynthesis
 singlestepretrosynthesis = SingleStepRetrosynthesis()
 
 
-#def load_rxns(GDB_version, template_version, retro_reac, retro_template): WITHOUT NUMBER LIMIT
-#    '''
-#    Loads the rxns list that were created in part 2 of the GDB subset matching the retro_reac pattern and applying retro_template to it
-#    '''
-#    try:
-#        with open(f'/home/yves/Documents/GitHub/USPTO_balance/created_rxns_{GDB_version}_{template_version}/rxns_{retro_reac}_{retro_template}.txt', 'r') as f:
-#            rxns_list = []
-#            for line in f:
-#                rxns_list.append(line.split('\n')[0])
-#        return rxns_list
-#    
-#    except FileNotFoundError:
-#        print(f'No reactions found for retro_reac: {retro_reac} and retro_template: {retro_template}')
-#        return []
-
-
-def load_rxns(GDB_version, template_version, retro_reac, retro_template, rxns_number = 10000):
+def load_rxns(dataset_name, dataset_version, template_version, retro_reac, retro_template, rxns_number = 10000):
     '''
-    Loads the rxns list that were created in part 2 of the GDB subset matching the retro_reac pattern and applying retro_template to it
+    Loads the rxns list that were created in part 2 of the dataset subset matching the retro_reac pattern and applying retro_template to it
     '''
     try:
-        with open(f'/home/yves/Documents/GitHub/USPTO_balance/created_rxns_{GDB_version}_{template_version}/rxns_{retro_reac}_{retro_template}.txt', 'r') as f:
+        folder_path = f'./results/created_rxns/{dataset_name}'
+        name        = f'rxns_{dataset_version}_{retro_reac}_{retro_template}' 
+
+        with open(f'{folder_path}/{name}.txt', 'r') as f:
             rxns_list = []
             rxns_list = list(islice(f, rxns_number))
             rxns_list = [rxns_list[i].split('\n')[0] for i in range(len(rxns_list))]
+
         return rxns_list
     
     except FileNotFoundError:
         print(f'No reactions found for retro_reac: {retro_reac} and retro_template: {retro_template}')
+
         return []
 
 
@@ -47,6 +37,7 @@ def tokenize_rxn_list(rxns_list):
     Tokenizes a list of reactions
     '''
     tok_rxns_list = [singlestepretrosynthesis.smi_tokenizer(i) for i in rxns_list]
+
     return tok_rxns_list
 
 
@@ -56,6 +47,7 @@ def run_T2_predictions(tok_rxns_list, Model_path, beam_size: int = 1, batch_size
     Gives back the list of reagents that has the same length as the input SMILES list.
     '''
     [preds_T2, probs_T2] = singlestepretrosynthesis.Execute_Prediction(tok_rxns_list, Model_path, beam_size, batch_size, untokenize_output)
+    
     return preds_T2[0]
 
 
@@ -69,21 +61,8 @@ def prepare_rxns_T2_for_T3(rxns_list, preds_T2):
     taggedreactants = [singlestepretrosynthesis.rxn_mark_center.TagMappedReactionCenter(MappedReactions[i], alternative_marking = True, tag_reactants = True).split('>>')[0] for i in range(len(MappedReactions))]
     reconstructed_rxns = [taggedreactants[i] + '>' + preds_T2[i] for i in range(len(preds_T2))]
     reconstructed_rxns_tok = [singlestepretrosynthesis.smi_tokenizer(i) for i in reconstructed_rxns]
+    
     return reconstructed_rxns_tok
-
-
-#def prepare_rxns_T2_for_T3(rxns_list, preds_T2):
-#    '''
-#    Takes a list of reactions in SMILES format (reactants>>product) and the predicted reagents for each reaction
-#    Outputs:
-#        - rxns_T2_list: a list of reactions in the format reactants>reagent>product,
-#        - rxns_T2_to_T3: a list of tokenized reactions in the format reactants>reagent,
-#        - rxns_T2_to_T3_tok: a list of tokenized reactions in the format reactants>reagent to use as input for T3
-#    '''
-#    rxns_T2_list = [rxns_list[i].split('>>')[0] + '>' + preds_T2[i] + '>' + rxns_list[i].split('>>')[1] for i in range(len(preds_T2))]
-#    rxns_T2_to_T3 = [rxns_list[i].split('>>')[0] + '>' + preds_T2[i] for i in range(len(preds_T2))]
-#    rxns_T2_to_T3_tok = [singlestepretrosynthesis.smi_tokenizer(i) for i in rxns_T2_to_T3]
-#    return rxns_T2_list, rxns_T2_to_T3, rxns_T2_to_T3_tok
 
 
 def run_T3_predictions(rxns_T2_to_T3_tok, Model_path, beam_size: int = 3, batch_size: int = 64, untokenize_output:bool = True):
@@ -92,6 +71,7 @@ def run_T3_predictions(rxns_T2_to_T3_tok, Model_path, beam_size: int = 3, batch_
     Gives back the list of predicted products that has the same length as the input SMILES list.    
     '''
     [preds_T3, probs_T3] = singlestepretrosynthesis.Execute_Prediction(rxns_T2_to_T3_tok, Model_path, beam_size, batch_size, untokenize_output)
+    
     return preds_T3[0], probs_T3[0]
 
 
@@ -104,6 +84,7 @@ def find_ind_match_T3_preds_ref(preds_T3, rxns_list):
 
     preds_ref = [rxns_list[i].split('>>')[1] for i in range(len(rxns_list))]
     ind = [i for i in range(len(preds_T3)) if preds_T3[i] == preds_ref[i]]
+    
     return ind
 
 
@@ -113,29 +94,34 @@ def keeps_match_confident_rxns(rxns_list, probs_T3, ind_match, conf_score = 0.9)
     '''
     ind_keep = [probs_T3[i] > conf_score for i in range(len(probs_T3))]
     rxns_conf = [rxns_list[i] for i in range(len(ind_keep)) if ind_keep[i] == True and i in ind_match]
+    
     return rxns_conf
 
 
-def save_conf_rxns(rxns_conf, GDB_version, template_version, retro_reac, retro_template):
+def save_conf_rxns(rxns_conf, dataset_name, dataset_version, template_version, retro_reac, retro_template):
 
-    folder_path = f'saved_rxns_{GDB_version}_{template_version}'
+    retro_template = retro_template.replace('/', 'slash')
+
+    folder_path = f'./results/saved_rxns/{dataset_name}'
+    name        = f'rxns_{dataset_version}_{retro_reac}_{retro_template}'
+
     if not os.path.exists(folder_path):
         os.makedirs(folder_path)
 
-    with open(f'/home/yves/Documents/GitHub/USPTO_balance/{folder_path}/rxns_{retro_reac}_{retro_template}.txt', 'w') as f:
+    with open(f'{folder_path}/{name}.txt', 'w') as f:
         for item in rxns_conf:
             f.write(item + '\n')
 
-
-#def load_template_version(template_version):
-#    df_templates_split = pd.read_pickle(f'/home/yves/Documents/GitHub/USPTO_balance/data/templates_split/df_templates_to_enrich_part_{template_version}.pkl')
-#    return df_templates_split
+    print(f'Validated {len(rxns_conf)} reactions for retro_reac: {retro_reac} and retro_template: {retro_template}')
 
 
-def delete_evaluated_rxns(GDB_version, template_version, retro_reac, retro_template):
+def delete_evaluated_rxns(dataset_name, dataset_version, template_version, retro_reac, retro_template):
 
-    name = f'rxns_{retro_reac}_{retro_template}'
-    folder_path = f'./created_rxns_{GDB_version}_{template_version}'
+    retro_template = retro_template.replace('/', 'slash')
+
+    folder_path = f'./results/created_rxns/{dataset_name}'
+    name = f'rxns_{dataset_version}_{retro_reac}_{retro_template}'
+    
     os.remove(f'{folder_path}/{name}.txt')
 
 
@@ -145,9 +131,9 @@ def read_config(config_file):
     return config
 
 
-def reactions_conf_validation(GDB_version, template_version, retro_reac, retro_template, Model_path_T2, Model_path_T3):
+def reactions_conf_validation(dataset_name, dataset_version, template_version, retro_reac, retro_template, Model_path_T2, Model_path_T3):
 
-    rxns_list = load_rxns(GDB_version, template_version, retro_reac, retro_template)
+    rxns_list = load_rxns(dataset_name, dataset_version, template_version, retro_reac, retro_template)
 
     if not rxns_list:
         return
@@ -158,15 +144,13 @@ def reactions_conf_validation(GDB_version, template_version, retro_reac, retro_t
     preds_T3, probs_T3 = run_T3_predictions(rxns_T2_to_T3_tok, Model_path_T3, beam_size = 3, batch_size = 64, untokenize_output = True)
     ind_match = find_ind_match_T3_preds_ref(preds_T3, rxns_list)
     rxns_conf = keeps_match_confident_rxns(rxns_list, probs_T3, ind_match, conf_score = 0.9)
-    save_conf_rxns(rxns_conf, GDB_version, template_version, retro_reac, retro_template)
-    #delete_evaluated_rxns(GDB_version, template_version, retro_reac, retro_template)
+    save_conf_rxns(rxns_conf, dataset_name, dataset_version, template_version, retro_reac, retro_template)
+    #delete_evaluated_rxns(dataset_name, dataset_version, template_version, retro_reac, retro_template)
 
-def main(GDB_version, df_templates_path_to_pkl, template_version, Model_path_T2, Model_path_T3):
 
-    df_templates_split = pd.read_pickle(df_templates_path_to_pkl)
+def main(dataset_name, dataset_version, template_version, retro_reac, retro_template, Model_path_T2, Model_path_T3):
 
-    for retro_reac, retro_template in tqdm(zip(df_templates_split['retro_reac'], df_templates_split['retro_templates'])):
-        reactions_conf_validation(GDB_version, template_version, retro_reac, retro_template, Model_path_T2, Model_path_T3)
+    reactions_conf_validation(dataset_name, dataset_version, template_version, retro_reac, retro_template, Model_path_T2, Model_path_T3)
 
 
 if __name__ == '__main__':
@@ -184,9 +168,11 @@ if __name__ == '__main__':
     config = read_config(args.config)
 
     main(
-        config['GDB_version'],
-        config['df_templates_path_to_pkl'],
+        config['dataset_name'],
+        config['dataset_version'],
         config['template_version'],
+        config['retro_reac'],
+        config['retro_template'],
         config['Model_path_T2'],
         config['Model_path_T3']        
     )
