@@ -22,28 +22,34 @@ def smiles_to_mol(smi):
     return mol
 
 
-def convert_and_save_subset(subset, subset_mol, retro_reac, GDB_version: str = '', template_version: str = ''):
+def convert_and_save_subset(subset, subset_mol, dataset_name:str, retro_reac, dataset_version: str = '', template_version: str = ''):
     '''
     Saves a subset of SMILES strings to a txt file and converts it to mol before saving it to a pkl file
     '''
     if subset:
-        name = f'GDB13S_sub_{retro_reac}'
-        folder_path = f'./GDB_subsets_{GDB_version}_{template_version}'
+        folder_path = f'./results/datasets/{dataset_name}'
+        name        = f'{dataset_name}_sub_{dataset_version}_{retro_reac}'
 
+        #Create the folder if it does not exist
         if not os.path.exists(folder_path):
-            # Create the folder if it doesn't exist
             os.makedirs(folder_path)
+
+        #Write the subset to a text file    
         with open(f'{folder_path}/{name}.txt', 'w') as f:
             for item in subset:
                 f.write(item + '\n')
 
-        folder_path_mol = f'./GDB_subsets_mol_{GDB_version}_{template_version}'
 
+        folder_path_mol = f'./results/datasets/{dataset_name}_mol'
+
+        #Create the folder if it does not exist
         if not os.path.exists(folder_path_mol):
-            # Create the folder if it doesn't exist
             os.makedirs(folder_path_mol)
+        
+        #Save the subset to a pickle file
         with open(f'{folder_path_mol}/{name}.pkl', 'wb') as f:
             pickle.dump(subset_mol, f)
+
 
 
 def canonicalize(smiles):
@@ -51,6 +57,7 @@ def canonicalize(smiles):
     Converts a smile string into a rdkit canonicalized smile string
     '''
     return singlestepretrosynthesis.canonicalize_smiles(smiles)
+
 
 
 #def extract_match_smiles_from_dataset_old(dataset:list, dataset_mol:list, template:str):
@@ -62,6 +69,8 @@ def canonicalize(smiles):
 #    dataset_sub     = [canonicalize(dataset[i]) for i in range(len(dataset)) if i in match_ind]
 #    dataset_sub_mol = [dataset_mol[i] for i in range(len(dataset_mol)) if i in match_ind]
 #    return dataset_sub, dataset_sub_mol
+
+
 
 def extract_match_smiles_from_dataset(dataset:list, dataset_mol:list, template:str):
     """
@@ -86,6 +95,7 @@ def extract_match_smiles_from_dataset(dataset:list, dataset_mol:list, template:s
     return dataset_sub, dataset_sub_mol
 
 
+
 def read_config(config_file):
     '''
     Reads the yaml config_file to extract the arguments for the main function
@@ -95,26 +105,20 @@ def read_config(config_file):
     return config
 
 
-def main(GDB13S_path, df_templates_path_to_pkl, GDB_version, template_version):
+def main(dataset_name, dataset_path, dataset_version, template_version, retro_reac, retro_template):
 
-    # Load GDB13S dataset
-    with open(GDB13S_path, 'r') as f:
-        GDB13S = [line.strip() for line in f]
+    # Load dataset
+    with open(dataset_path, 'r') as f:
+        dataset = [line.strip() for line in f]
 
-    # Convert SMILES to RDKit molecule objects in parallel
+    # Convert SMILES to RDKit mol objects
     processes = os.cpu_count() - 2
     with Pool(processes) as p:
-        output = list(tqdm(p.imap(smiles_to_mol, GDB13S), total=len(GDB13S)))
-    GDB13S_mol = output
+        output = list(tqdm(p.imap(smiles_to_mol, dataset), total=len(dataset)))
+    dataset_mol = output
 
-    #load df_templates prepared in (*)
-    df_templates = pd.read_pickle(df_templates_path_to_pkl)
-
-    # Extract subsets based on unique retro_reac values
-    unique_retro_reac_values = df_templates['retro_reac'].unique()
-    for retro_reac in unique_retro_reac_values:
-        GDB13S_sub, GDB13S_sub_mol = extract_match_smiles_from_dataset(GDB13S, GDB13S_mol, retro_reac)
-        convert_and_save_subset(GDB13S_sub, GDB13S_sub_mol, retro_reac, GDB_version, template_version)
+    dataset_sub, dataset_sub_mol = extract_match_smiles_from_dataset(dataset, dataset_mol, retro_reac)
+    convert_and_save_subset(dataset_sub, dataset_sub_mol, dataset_name, retro_reac, dataset_version, template_version)
 
 if __name__ == '__main__':
     
@@ -131,16 +135,10 @@ if __name__ == '__main__':
 
     config = read_config(args.config)
     main(
-        config['GDB13S_path'],
-        config['df_templates_path_to_pkl'],
-        config['GDB_version'],
-        config['template_version']
+        config['dataset_name'],
+        config['dataset_path'],
+        config['dataset_version'],
+        config['template_version'],
+        config['retro_reac'],
+        config['retro_template']
     )
-    '''config_file = "config_part1.yaml"
-    config = read_config(args.config)
-    main(
-        config['GDB13S_path'],
-        config['df_templates_path_to_pkl'],
-        config['GDB_version'],
-        config['template_version']
-    )'''
