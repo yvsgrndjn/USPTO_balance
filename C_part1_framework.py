@@ -22,6 +22,26 @@ def smiles_to_mol(smi):
     return mol
 
 
+def do_subsets_exist_already(dataset_name: str, dataset_version: str, retro_reac: str):
+    '''
+    Checks if the subsets matching a retro_reac pattern in the dataset version have already been extracted.
+    Returns True if they exist, False otherwise
+
+    Inputs:
+    dataset_name: name of the dataset (str) ex: GDB13S, USPTO. Prerequisite: The dataset divided in 100 different files in the format {dataset_name}_i.txt for i from 1 to 100 must be present in the folder dataset_balance/data/
+    dataset_version: version of the dataset (str) being any integer from 1 to 100
+    retro_reac: SMARTS pattern (str) of the retrosynthetic precursor of the reaction. ex: output of the rxn_smarts_to_sanitized_reactant_smarts function
+    '''
+    folder_path     = f'./results/datasets/{dataset_name}'
+    folder_path_mol = f'./results/datasets/{dataset_name}_mol'
+    name            = f'{dataset_name}_sub_{dataset_version}_{retro_reac}'    
+
+    if os.path.exists(f'{folder_path}/{name}.txt') and os.path.exists(f'{folder_path_mol}/{name}.pkl'):
+        return True
+    else:
+        return False
+
+
 def convert_and_save_subset(subset, subset_mol, dataset_name:str, retro_reac, dataset_version: str = '', template_version: str = ''):
     '''
     Saves a subset of SMILES strings to a txt file and converts it to mol before saving it to a pkl file
@@ -50,6 +70,7 @@ def convert_and_save_subset(subset, subset_mol, dataset_name:str, retro_reac, da
         with open(f'{folder_path_mol}/{name}.pkl', 'wb') as f:
             pickle.dump(subset_mol, f)
 
+        print(f'Saved subset of {len(subset)} smiles from {dataset_name}_{dataset_version} for retro_reac: {retro_reac}')
 
 
 def canonicalize(smiles):
@@ -57,19 +78,6 @@ def canonicalize(smiles):
     Converts a smile string into a rdkit canonicalized smile string
     '''
     return singlestepretrosynthesis.canonicalize_smiles(smiles)
-
-
-
-#def extract_match_smiles_from_dataset_old(dataset:list, dataset_mol:list, template:str):
-#    """
-#    This function extracts the elements from a smiles dataset that match a certain template and canonicalizes them
-#    """
-#    template_mol    = Chem.MolFromSmarts(template)
-#    match_ind       = [i for i in range(len(dataset_mol)) if dataset_mol[i].HasSubstructMatch(template_mol)]
-#    dataset_sub     = [canonicalize(dataset[i]) for i in range(len(dataset)) if i in match_ind]
-#    dataset_sub_mol = [dataset_mol[i] for i in range(len(dataset_mol)) if i in match_ind]
-#    return dataset_sub, dataset_sub_mol
-
 
 
 def extract_match_smiles_from_dataset(dataset:list, dataset_mol:list, template:str):
@@ -107,18 +115,24 @@ def read_config(config_file):
 
 def main(dataset_name, dataset_path, dataset_version, template_version, retro_reac, retro_template):
 
-    # Load dataset
-    with open(dataset_path, 'r') as f:
-        dataset = [line.strip() for line in f]
+    if do_subsets_exist_already(dataset_name, dataset_version, retro_reac):
+        print(f'The subsets for dataset {dataset_name} and retro_reac {retro_reac} already exist')
+        pass
 
-    # Convert SMILES to RDKit mol objects
-    processes = os.cpu_count() - 2
-    with Pool(processes) as p:
-        output = list(tqdm(p.imap(smiles_to_mol, dataset), total=len(dataset)))
-    dataset_mol = output
+    else:
+        # Load dataset
+        with open(dataset_path, 'r') as f:
+            dataset = [line.strip() for line in f]
 
-    dataset_sub, dataset_sub_mol = extract_match_smiles_from_dataset(dataset, dataset_mol, retro_reac)
-    convert_and_save_subset(dataset_sub, dataset_sub_mol, dataset_name, retro_reac, dataset_version, template_version)
+        # Convert SMILES to RDKit mol objects
+        processes = os.cpu_count() - 2
+        with Pool(processes) as p:
+            output = list(tqdm(p.imap(smiles_to_mol, dataset), total=len(dataset)))
+        dataset_mol = output
+
+        dataset_sub, dataset_sub_mol = extract_match_smiles_from_dataset(dataset, dataset_mol, retro_reac)
+        convert_and_save_subset(dataset_sub, dataset_sub_mol, dataset_name, retro_reac, dataset_version, template_version)
+
 
 if __name__ == '__main__':
     
