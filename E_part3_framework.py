@@ -79,7 +79,6 @@ def find_ind_match_T3_preds_ref(preds_T3, rxns_list):
     '''
     Takes as input the forward predictions of T3 and the original reactions list, returns the indices of the predicted products matching the original products (returns indices of forward validated reactions)
     '''
-    #canonicalize preds_T3
     preds_T3 = [singlestepretrosynthesis.canonicalize_smiles(i) for i in preds_T3]
 
     preds_ref = [rxns_list[i].split('>>')[1] for i in range(len(rxns_list))]
@@ -112,7 +111,7 @@ def save_conf_rxns(rxns_conf, dataset_name, dataset_version, template_version, r
         for item in rxns_conf:
             f.write(item + '\n')
 
-    print(f'Validated {len(rxns_conf)} reactions for retro_reac: {retro_reac} and retro_template: {retro_template}')
+    print(f'Validated and saved {len(rxns_conf)} reactions for retro_reac: {retro_reac} and retro_template: {retro_template}')
 
 
 def delete_evaluated_rxns(dataset_name, dataset_version, template_version, retro_reac, retro_template):
@@ -126,6 +125,9 @@ def delete_evaluated_rxns(dataset_name, dataset_version, template_version, retro
 
 
 def read_config(config_file):
+    '''
+    Reads the yaml config_file to extract the arguments for the main function
+    '''
     with open(config_file, 'r') as f:
         config = yaml.safe_load(f)
     return config
