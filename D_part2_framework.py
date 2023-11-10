@@ -1,4 +1,3 @@
-# Part 2 - gpt proposal for cleaner version
 import os
 import pickle
 from itertools import chain
@@ -57,7 +56,7 @@ def save_rxns(rxns_list, retro_reac, retro_template, dataset_version: str = '', 
         with open(f'{folder_path}/{name}.txt', 'w') as f:
             for item in rxns_list:
                 f.write(item + '\n')
-        print(f'Saved {len(rxns_list)} reactions for retro_reac: {retro_reac} and retro_template: {retro_template}')
+        print(f'Created {len(rxns_list)} reactions for retro_reac: {retro_reac} and retro_template: {retro_template}')
 
 
 def apply_rxn_template_on_mols_list(dataset_mol:list, rxn_template:str):
