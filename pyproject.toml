@@ -13,7 +13,7 @@ license = { text = "BSD 3-Clause License" }
 authors = [
     { email = "yves.grandjean@unibe.ch", name = "Yves Grandjean" },
 ]
-#dynamic = ["version"]
+dynamic = ["version"]
 dependencies = [
    "numpy==1.19.5", 
     "pandas==1.1.5", 
