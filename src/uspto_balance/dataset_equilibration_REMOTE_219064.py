@@ -205,8 +205,4 @@ if __name__ == '__main__':
         config['path_models'], 
         config['template_frequency'],
         config['frequency_target']
-<<<<<<< HEAD
     )
-=======
-    )
->>>>>>> 35f4b8cbaaf8e23a4df52e329f61332a24d10264

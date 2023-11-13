@@ -177,4 +177,8 @@ if __name__ == '__main__':
         config['retro_template'],
         config['Model_path_T2'],
         config['Model_path_T3']        
+<<<<<<< HEAD
     )
+=======
+    )
+>>>>>>> 35f4b8cbaaf8e23a4df52e329f61332a24d10264
