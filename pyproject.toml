@@ -16,9 +16,9 @@ authors = [
 ]
 #dynamic = ["version"]
 dependencies = [
-   "numpy==1.19.5", 
-    "pandas==1.1.5", 
-    "rdkit==2022.3.3", 
+   #"numpy==1.19.5", 
+    #"pandas==1.1.5", 
+    #"rdkit==2022.3.3", 
 
     "ttlretro@git+ssh://git@github.com/yvsgrndjn/MultiStepRetrosynthesisTTL#319edba11c9986d18b20c6353489e56aad68883a",     
     ]
