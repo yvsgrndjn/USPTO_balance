@@ -163,7 +163,8 @@ def append_saved_rxns_until_enrichment_target(dataset_name, dataset_version, ret
         else:
             how_many_to_append = frequency_target - (template_frequency - len(saved_rxns))
             append_n_elements_to_file(f'{folder_path}/full_{name_to_save}.txt', saved_rxns, how_many_to_append)
-
+            template_frequency = template_frequency - len(saved_rxns) + how_many_to_append
+            
     return template_frequency
 
 
