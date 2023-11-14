@@ -10,6 +10,8 @@ from uspto_balance.C_part1_framework import main as c_part1_framework
 from uspto_balance.D_part2_framework import main as d_part2_framework
 from uspto_balance.E_part3_framework import main as e_part3_framework
 
+print('Imports done') 
+
 #functions definition-------
 
 
@@ -23,7 +25,7 @@ def read_config(config_file):
 
 
 def extract_subset_from_dataset(dataset_name, dataset_version, retro_reac, retro_template, path_to_folder):
-    
+    print('In extract_subset_from_dataset')
     #initialize config variables
     template_version           = f"{retro_reac}"
     dataset_path               = f"{path_to_folder}data/{dataset_name}_{dataset_version}.txt"
@@ -63,7 +65,7 @@ def extract_subset_from_dataset(dataset_name, dataset_version, retro_reac, retro
 
 
 def create_reactions_using_template(dataset_name, dataset_version, retro_reac, retro_template, path_to_folder):
-    
+    print('In create_reactions_using_template')
     #initialize config variables
     template_version           = f"{retro_reac}"
 
@@ -92,7 +94,7 @@ def create_reactions_using_template(dataset_name, dataset_version, retro_reac, r
 
 
 def validate_created_reactions(dataset_name, dataset_version, retro_reac, retro_template, path_to_folder, path_models):
-    
+    print('In validate_created_reactions')
     #initialize config variables
     template_version           = f"{retro_reac}"
     Model_path_T2              = f"{path_models}USPTO_STEREO_separated_T2_Reagent_Pred_225000.pt"
@@ -145,7 +147,7 @@ def append_n_elements_to_file(path_to_file, list_to_append, n_elements):
 
 
 def append_saved_rxns_until_enrichment_target(dataset_name, dataset_version, retro_reac, retro_template, template_frequency, frequency_target: int = 10000):
-
+    print('In append_saved_rxns_until_enrichment_target')
     retro_template = retro_template.replace('/', 'slash')
     folder_path  = f'./results/saved_rxns/{dataset_name}'
     name         = f'rxns_{dataset_version}_{retro_reac}_{retro_template}'
@@ -167,11 +169,12 @@ def append_saved_rxns_until_enrichment_target(dataset_name, dataset_version, ret
 
 # main definition    -------
 def main(dataset_name, retro_reac, retro_template, path_to_folder, path_models, template_frequency, frequency_target: int = 10000):
+    print('In main')
     counter = 0
     initial_template_frequency = template_frequency
 
     while template_frequency < frequency_target and counter <= 100:
-        
+        print(f'Iteration {counter}')
         counter += 1
 
         extract_subset_from_dataset(dataset_name, counter, retro_reac, retro_template, path_to_folder)
@@ -183,6 +186,7 @@ def main(dataset_name, retro_reac, retro_template, path_to_folder, path_models, 
 
 
 def main_balance():
+    print('In main_balance')
     parser = argparse.ArgumentParser()
     parser.add_argument('-c', '--config', help='Path to the configuration file')
     args = parser.parse_args()
