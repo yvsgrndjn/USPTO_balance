@@ -19,12 +19,8 @@ dependencies = [
    "numpy==1.19.5", 
     "pandas==1.1.5", 
     "rdkit==2022.3.3", 
-    "pytorch==1.5.1",  
-    
-    #"opennmt-py@git+https://github.com/reymond-group/OpenNMT-py#71fb9f70e887589941be291b762a8bdad8aa9437", 
-    #"scscore@git+https://github.com/DavKre/scscore#egg=8cc8b9fbc8150d608d9632b28c1c7c3148433115", 
-    #"rxnmapper@git+https://github.com/yvsgrndjn/rxnmapper#3ae9f877fa3742b6c8558848c429180bd7839505", 
-    "ttlretro@git+ssh://git@github.com/yvsgrndjn/MultiStepRetrosynthesisTTL#ac9af95203c082e049dbf5041afefe30e9503b89", 
+
+    "ttlretro@git+ssh://git@github.com/yvsgrndjn/MultiStepRetrosynthesisTTL#319edba11c9986d18b20c6353489e56aad68883a",     
     ]
 
 [tool.hatch.version]
@@ -40,7 +36,7 @@ sources = ["src"]
 
 
 [project.scripts]
-balance = "uspto_balance.dataset_equilibration:main"
+balance = "uspto_balance.dataset_equilibration:main_balance"
 
 # extras
 # https://peps.python.org/pep-0621/#dependencies-optional-dependencies

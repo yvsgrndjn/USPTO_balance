@@ -6,9 +6,9 @@ import sys
 
 
 #module imports
-from C_part1_framework import main as c_part1_framework
-from D_part2_framework import main as d_part2_framework
-from E_part3_framework import main as e_part3_framework
+from uspto_balance.C_part1_framework import main as c_part1_framework
+from uspto_balance.D_part2_framework import main as d_part2_framework
+from uspto_balance.E_part3_framework import main as e_part3_framework
 
 #functions definition-------
 
@@ -42,7 +42,7 @@ def extract_subset_from_dataset(dataset_name, dataset_version, retro_reac, retro
         with open(f'{config_file_path}', 'w') as f:
 
             f.write(f'dataset_name: "{dataset_name}"\n')
-            f.write(f'dataset_path: "{path_to_folder}data/{dataset_name}_{dataset_version}.txt"\n')
+            f.write(f'dataset_path: "{dataset_path}"\n')
             f.write(f'dataset_version: "{dataset_version}"\n')
             f.write(f'template_version: "{template_version}"\n')
             f.write(f'retro_reac: "{retro_reac}"\n')
@@ -167,7 +167,6 @@ def append_saved_rxns_until_enrichment_target(dataset_name, dataset_version, ret
 
 # main definition    -------
 def main(dataset_name, retro_reac, retro_template, path_to_folder, path_models, template_frequency, frequency_target: int = 10000):
-
     counter = 0
     initial_template_frequency = template_frequency
 
@@ -183,8 +182,7 @@ def main(dataset_name, retro_reac, retro_template, path_to_folder, path_models, 
     print(f'Enriched initial {initial_template_frequency} reactions to {template_frequency} for retro_reac: {retro_reac} and retro_template: {retro_template}')
 
 
-if __name__ == '__main__':
-    
+def main_balance():
     parser = argparse.ArgumentParser()
     parser.add_argument('-c', '--config', help='Path to the configuration file')
     args = parser.parse_args()
@@ -205,4 +203,8 @@ if __name__ == '__main__':
         config['path_models'], 
         config['template_frequency'],
         config['frequency_target']
+        )
 
+
+if __name__ == '__main__':
+    main_balance()
