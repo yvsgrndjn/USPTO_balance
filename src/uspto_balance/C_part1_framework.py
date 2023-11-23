@@ -9,6 +9,7 @@ from rdkit import Chem
 from rdkit.Chem import AllChem
 import pickle
 import sys
+import pandas as pd
 import argparse
 from ttlretro.single_step_retro import SingleStepRetrosynthesis
 singlestepretrosynthesis = SingleStepRetrosynthesis()
@@ -130,7 +131,12 @@ def main(dataset_name, dataset_path, dataset_version, template_version, retro_re
             output = list(tqdm(p.imap(smiles_to_mol, dataset), total=len(dataset)))
         dataset_mol = output
 
-        dataset_sub, dataset_sub_mol = extract_match_smiles_from_dataset(dataset, dataset_mol, retro_reac)
+        #remove None values from the dataset
+        df = pd.DataFrame(data=dataset, columns=['smiles'])
+        df['mol'] = dataset_mol
+        df = df[[not el for el in df['mol'].isnull().values]]
+
+        dataset_sub, dataset_sub_mol = extract_match_smiles_from_dataset(dataset=df['smiles'], dataset_mol=df['mol'], template = retro_reac)
         convert_and_save_subset(dataset_sub, dataset_sub_mol, dataset_name, retro_reac, dataset_version, template_version)
 
 

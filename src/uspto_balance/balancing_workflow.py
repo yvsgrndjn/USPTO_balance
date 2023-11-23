@@ -6,8 +6,13 @@ import multiprocessing
 import pickle
 from itertools import chain
 from itertools import islice
+import yaml
 from ttlretro.single_step_retro import SingleStepRetrosynthesis
 singlestepretrosynthesis = SingleStepRetrosynthesis()
+
+from uspto_balance.C_part1_framework import main as c_part1_framework
+from uspto_balance.D_part2_framework import main as d_part2_framework
+from uspto_balance.E_part3_framework import main as e_part3_framework
 
 #Module containing all functions related to the balancing dataset workflow
 
