@@ -222,6 +222,10 @@ def process_retro_template(retro_reac, retro_template, dataset_version: str = ''
     # Create fictive reactions
     fictive_rxns_list = [format_reaction(dataset_sub_app_temp_sort[k], dataset_sub_sort[k]) for k in range(len(dataset_sub_sort))]
     fictive_rxns_list = list(chain.from_iterable(fictive_rxns_list))
+    try:
+        fictive_rxns_list.remove('>>') #remove empty reactions
+    except ValueError:
+        pass
 
     # Save in a txt file
     save_rxns(fictive_rxns_list, retro_reac, retro_template, dataset_version, template_version, dataset_name)
