@@ -294,6 +294,16 @@ def run_T3_predictions(rxns_T2_to_T3_tok, Model_path, beam_size: int = 3, batch_
     return preds_T3[0], probs_T3[0]
 
 
+def remove_unmapped_rxns(MappedReactions, preds_T2, rxns_list):
+    indices_to_remove = [i for i, value in enumerate(MappedReactions) if value == '>>']
+
+    for index in reversed(indices_to_remove):
+        del MappedReactions[index]
+        del preds_T2[index]
+        del rxns_list[index]
+    return MappedReactions, preds_T2, rxns_list
+
+
 def find_ind_match_T3_preds_ref(preds_T3, rxns_list):
     '''
     Takes as input the forward predictions of T3 and the original reactions list, returns the indices of the predicted products matching the original products (returns indices of forward validated reactions)

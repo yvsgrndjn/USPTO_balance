@@ -58,6 +58,7 @@ def prepare_rxns_T2_for_T3(rxns_list, preds_T2):
     reactants tagged "!" > reagents (tokenized)
     '''
     MappedReactions = list(singlestepretrosynthesis.rxn_mapper_batch.map_reactions(rxns_list))
+    MappedReactions, preds_T2, rxns_list = remove_unmapped_rxns(MappedReactions, preds_T2, rxns_list)
     taggedreactants = [singlestepretrosynthesis.rxn_mark_center.TagMappedReactionCenter(MappedReactions[i], alternative_marking = True, tag_reactants = True).split('>>')[0] for i in range(len(MappedReactions))]
     reconstructed_rxns = [taggedreactants[i] + '>' + preds_T2[i] for i in range(len(preds_T2))]
     reconstructed_rxns_tok = [singlestepretrosynthesis.smi_tokenizer(i) for i in reconstructed_rxns]
@@ -73,6 +74,16 @@ def run_T3_predictions(rxns_T2_to_T3_tok, Model_path, beam_size: int = 3, batch_
     [preds_T3, probs_T3] = singlestepretrosynthesis.Execute_Prediction(rxns_T2_to_T3_tok, Model_path, beam_size, batch_size, untokenize_output)
     
     return preds_T3[0], probs_T3[0]
+
+
+def remove_unmapped_rxns(MappedReactions, preds_T2, rxns_list):
+    indices_to_remove = [i for i, value in enumerate(MappedReactions) if value == '>>']
+
+    for index in reversed(indices_to_remove):
+        del MappedReactions[index]
+        del preds_T2[index]
+        del rxns_list[index]
+    return MappedReactions, preds_T2, rxns_list
 
 
 def find_ind_match_T3_preds_ref(preds_T3, rxns_list):
