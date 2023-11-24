@@ -38,7 +38,7 @@ def extract_subset_from_dataset(dataset_name, dataset_version, retro_reac, retro
     if not os.path.exists(f'{folder_path}/{name}.txt'):
 
         #replace the ';' characters in the config file name to avoid errors
-        config_file_path = f'./config_files/config_part1_{template_version}.yaml'.replace(';','')
+        config_file_path = f'./config_files/config_part1_{dataset_name}_{template_version}.yaml'.replace(';','')
 
         #create config file for part 1
         with open(f'{config_file_path}', 'w') as f:
@@ -70,7 +70,7 @@ def create_reactions_using_template(dataset_name, dataset_version, retro_reac, r
     template_version           = f"{retro_reac}"
 
     #replace the ';' characters in the config file name to avoid errors
-    config_file_path2 = f'{path_to_folder}config_files/config_part2_{template_version}.yaml'.replace(';','')
+    config_file_path2 = f'{path_to_folder}config_files/config_part2_{dataset_name}_{template_version}.yaml'.replace(';','')
 
     #create config file for part 2
     with open(f'{config_file_path2}', 'w') as f:
@@ -100,7 +100,7 @@ def validate_created_reactions(dataset_name, dataset_version, retro_reac, retro_
     Model_path_T2              = f"{path_models}USPTO_STEREO_separated_T2_Reagent_Pred_225000.pt"
     Model_path_T3              = f"{path_models}T3_Fwd_Tag_model_step_300000.pt"
        
-    config_file_path3 = f'{path_to_folder}config_files/config_part3_{template_version}.yaml'.replace(';','')
+    config_file_path3 = f'{path_to_folder}config_files/config_part3_{dataset_name}_{template_version}.yaml'.replace(';','')
 
     #create config file for part 3
     with open(f'{config_file_path3}', 'w') as f:
