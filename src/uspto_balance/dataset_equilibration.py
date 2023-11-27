@@ -164,7 +164,14 @@ def append_saved_rxns_until_enrichment_target(dataset_name, dataset_version, ret
             how_many_to_append = frequency_target - (template_frequency - len(saved_rxns))
             append_n_elements_to_file(f'{folder_path}/full_{name_to_save}.txt', saved_rxns, how_many_to_append)
             template_frequency = template_frequency - len(saved_rxns) + how_many_to_append
-        
+
+            #when reaching the target, remove the created subsets to avoid using memory space
+            folder_path = f'./results/datasets/{dataset_name}'
+            folder_path_mol = f'./results/datasets/{dataset_name}_mol'
+            name        = f'{dataset_name}_sub_{dataset_version}_{retro_reac}'
+            os.remove(f'{folder_path}/{name}.txt')      #remove smiles subset
+            os.remove(f'{folder_path_mol}/{name}.pkl')  #remove mol subsets
+
         os.remove(f'{folder_path}/{name}.txt') #remove the file with the saved reactions to only keep the file containing all the reactions
 
     return template_frequency
