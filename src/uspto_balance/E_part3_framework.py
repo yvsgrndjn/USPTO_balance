@@ -158,7 +158,7 @@ def reactions_conf_validation(dataset_name, dataset_version, template_version, r
     ind_match = find_ind_match_T3_preds_ref(preds_T3, rxns_list)
     rxns_conf = keeps_match_confident_rxns(rxns_list, probs_T3, ind_match, conf_score = 0.9)
     save_conf_rxns(rxns_conf, dataset_name, dataset_version, template_version, retro_reac, retro_template)
-    #delete_evaluated_rxns(dataset_name, dataset_version, template_version, retro_reac, retro_template)
+    delete_evaluated_rxns(dataset_name, dataset_version, template_version, retro_reac, retro_template)
 
 
 def main(dataset_name, dataset_version, template_version, retro_reac, retro_template, Model_path_T2, Model_path_T3):
