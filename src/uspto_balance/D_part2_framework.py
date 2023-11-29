@@ -21,7 +21,9 @@ def load_subsets(retro_reac: str = '', dataset_version: str = '', template_versi
     
     folder_path     = f'./results/datasets/{dataset_name}'
     folder_path_mol = f'./results/datasets/{dataset_name}_mol'
-    name            = f'{dataset_name}_sub_{dataset_version}_{retro_reac}'
+    #name            = f'{dataset_name}_sub_{dataset_version}_{retro_reac}'
+    template_version= f"{retro_reac}".replace('/', 'slash') #new -------------   
+    name            = f'{dataset_name}_sub_{dataset_version}_{template_version}'
 
     try:
         with open(f'{folder_path}/{name}.txt', 'r') as f:
@@ -46,8 +48,10 @@ def save_rxns(rxns_list, retro_reac, retro_template, dataset_version: str = '', 
     retro_template = retro_template.replace('/', 'slash')
 
     if rxns_list:
-        folder_path = f'./results/created_rxns/{dataset_name}'
-        name = f'rxns_{dataset_version}_{retro_reac}_{retro_template}'
+        folder_path     = f'./results/created_rxns/{dataset_name}'
+        #name           = f'rxns_{dataset_version}_{retro_reac}_{retro_template}'
+        template_version= f"{retro_reac}".replace('/', 'slash') #new -------------
+        name            = f'{dataset_name}_sub_{dataset_version}_{template_version}'
 
         #Create the folder if it does not exist
         if not os.path.exists(folder_path):
@@ -137,10 +141,6 @@ def read_config(config_file):
 
 
 def main(dataset_name, dataset_version, template_version, retro_reac, retro_template):
-    
-    #take care of the '/' character in the names that might cause errors
-    retro_reac = retro_reac.replace('/', 'slash')
-    retro_template = retro_template.replace('/', 'slash')
     
     process_retro_template(retro_reac, retro_template, dataset_version, template_version, dataset_name)
 

@@ -16,8 +16,10 @@ def load_rxns(dataset_name, dataset_version, template_version, retro_reac, retro
     Loads the rxns list that were created in part 2 of the dataset subset matching the retro_reac pattern and applying retro_template to it
     '''
     try:
-        folder_path = f'./results/created_rxns/{dataset_name}'
-        name        = f'rxns_{dataset_version}_{retro_reac}_{retro_template}' 
+        folder_path     = f'./results/created_rxns/{dataset_name}'
+        #name           = f'rxns_{dataset_version}_{retro_reac}_{retro_template}' 
+        template_version= f"{retro_reac}".replace('/', 'slash') #new -------------
+        name            = f'rxns_{dataset_version}_{template_version}_{retro_template}'
 
         with open(f'{folder_path}/{name}.txt', 'r') as f:
             rxns_list = []
@@ -112,8 +114,10 @@ def save_conf_rxns(rxns_conf, dataset_name, dataset_version, template_version, r
 
     retro_template = retro_template.replace('/', 'slash')
 
-    folder_path = f'./results/saved_rxns/{dataset_name}'
-    name        = f'rxns_{dataset_version}_{retro_reac}_{retro_template}'
+    folder_path     = f'./results/saved_rxns/{dataset_name}'
+    #name           = f'rxns_{dataset_version}_{retro_reac}_{retro_template}'
+    template_version= f"{retro_reac}".replace('/', 'slash') #new -------------
+    name            = f'rxns_{dataset_version}_{template_version}_{retro_template}'
 
     if not os.path.exists(folder_path):
         os.makedirs(folder_path)
@@ -129,9 +133,11 @@ def delete_evaluated_rxns(dataset_name, dataset_version, template_version, retro
 
     retro_template = retro_template.replace('/', 'slash')
 
-    folder_path = f'./results/created_rxns/{dataset_name}'
-    name = f'rxns_{dataset_version}_{retro_reac}_{retro_template}'
-    
+    folder_path     = f'./results/created_rxns/{dataset_name}'
+    #name           = f'rxns_{dataset_version}_{retro_reac}_{retro_template}'
+    template_version= f"{retro_reac}".replace('/', 'slash') #new -------------
+    name            = f'rxns_{dataset_version}_{template_version}_{retro_template}'
+
     os.remove(f'{folder_path}/{name}.txt')
 
 
@@ -162,10 +168,6 @@ def reactions_conf_validation(dataset_name, dataset_version, template_version, r
 
 
 def main(dataset_name, dataset_version, template_version, retro_reac, retro_template, Model_path_T2, Model_path_T3):
-    
-    #take care of the '/' character in the names that might cause errors
-    retro_reac = retro_reac.replace('/', 'slash')
-    retro_template = retro_template.replace('/', 'slash')
     
     reactions_conf_validation(dataset_name, dataset_version, template_version, retro_reac, retro_template, Model_path_T2, Model_path_T3)
 

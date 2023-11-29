@@ -26,13 +26,16 @@ def read_config(config_file):
 
 def extract_subset_from_dataset(dataset_name, dataset_version, retro_reac, retro_template, path_to_folder):
     print('In extract_subset_from_dataset')
+
     #initialize config variables
-    template_version           = f"{retro_reac}"
+    template_version           = f"{retro_reac}".replace('/', 'slash')
     dataset_path               = f"{path_to_folder}data/{dataset_name}_{dataset_version}.txt"
 
     #check if part 1 needs to be run or not
     folder_path = f'./results/datasets/{dataset_name}'
-    name        = f'{dataset_name}_sub_{dataset_version}_{retro_reac}'
+    
+    #name        = f'{dataset_name}_sub_{dataset_version}_{retro_reac}'------------------------
+    name        = f'{dataset_name}_sub_{dataset_version}_{template_version}'
 
     #only run part 1 if the subset does not exist yet
     if not os.path.exists(f'{folder_path}/{name}.txt'):
@@ -66,8 +69,9 @@ def extract_subset_from_dataset(dataset_name, dataset_version, retro_reac, retro
 
 def create_reactions_using_template(dataset_name, dataset_version, retro_reac, retro_template, path_to_folder):
     print('In create_reactions_using_template')
+
     #initialize config variables
-    template_version           = f"{retro_reac}"
+    template_version           = f"{retro_reac}".replace('/', 'slash')
 
     #replace the ';' characters in the config file name to avoid errors
     config_file_path2 = f'{path_to_folder}config_files/config_part2_{dataset_name}_{template_version}.yaml'.replace(';','')
@@ -96,7 +100,7 @@ def create_reactions_using_template(dataset_name, dataset_version, retro_reac, r
 def validate_created_reactions(dataset_name, dataset_version, retro_reac, retro_template, path_to_folder, path_models):
     print('In validate_created_reactions')
     #initialize config variables
-    template_version           = f"{retro_reac}"
+    template_version           = f"{retro_reac}".replace('/', 'slash')
     Model_path_T2              = f"{path_models}USPTO_STEREO_separated_T2_Reagent_Pred_225000.pt"
     Model_path_T3              = f"{path_models}T3_Fwd_Tag_model_step_300000.pt"
        
@@ -148,6 +152,8 @@ def append_n_elements_to_file(path_to_file, list_to_append, n_elements):
 
 def append_saved_rxns_until_enrichment_target(dataset_name, dataset_version, retro_reac, retro_template, template_frequency, frequency_target: int = 10000):
     print('In append_saved_rxns_until_enrichment_target')
+    
+    retro_reac     = retro_reac.replace('/', 'slash')
     retro_template = retro_template.replace('/', 'slash')
     folder_path  = f'./results/saved_rxns/{dataset_name}'
     name         = f'rxns_{dataset_version}_{retro_reac}_{retro_template}'
@@ -182,10 +188,6 @@ def main(dataset_name, retro_reac, retro_template, path_to_folder, path_models, 
     print('In main')
     counter = 0
     initial_template_frequency = template_frequency
-
-    #take care of the '/' character in the names that might cause errors
-    retro_reac = retro_reac.replace('/', 'slash')
-    retro_template = retro_template.replace('/', 'slash')
 
     while template_frequency < frequency_target and counter <= 100:
         print(f'Iteration {counter}')

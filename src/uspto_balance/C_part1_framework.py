@@ -35,7 +35,9 @@ def do_subsets_exist_already(dataset_name: str, dataset_version: str, retro_reac
     '''
     folder_path     = f'./results/datasets/{dataset_name}'
     folder_path_mol = f'./results/datasets/{dataset_name}_mol'
-    name            = f'{dataset_name}_sub_{dataset_version}_{retro_reac}'    
+    template_version= f"{retro_reac}".replace('/', 'slash') #new -------------
+    #name            = f'{dataset_name}_sub_{dataset_version}_{retro_reac}'    
+    name            = f'{dataset_name}_sub_{dataset_version}_{template_version}'    
 
     if os.path.exists(f'{folder_path}/{name}.txt') and os.path.exists(f'{folder_path_mol}/{name}.pkl'):
         return True
@@ -48,9 +50,11 @@ def convert_and_save_subset(subset, subset_mol, dataset_name:str, retro_reac, da
     Saves a subset of SMILES strings to a txt file and converts it to mol before saving it to a pkl file
     '''
     if subset:
-        folder_path = f'./results/datasets/{dataset_name}'
-        name        = f'{dataset_name}_sub_{dataset_version}_{retro_reac}'
-
+        folder_path     = f'./results/datasets/{dataset_name}'
+        #name           = f'{dataset_name}_sub_{dataset_version}_{retro_reac}'
+        template_version= f"{retro_reac}".replace('/', 'slash') #new -------------
+        name            = f'{dataset_name}_sub_{dataset_version}_{template_version}'
+        
         #Create the folder if it does not exist
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
