@@ -152,7 +152,7 @@ def append_n_elements_to_file(path_to_file, list_to_append, n_elements):
 
 def append_saved_rxns_until_enrichment_target(dataset_name, dataset_version, retro_reac, retro_template, template_frequency, frequency_target: int = 10000):
     print('In append_saved_rxns_until_enrichment_target')
-    
+
     retro_reac     = retro_reac.replace('/', 'slash')
     retro_template = retro_template.replace('/', 'slash')
     folder_path  = f'./results/saved_rxns/{dataset_name}'
@@ -165,20 +165,26 @@ def append_saved_rxns_until_enrichment_target(dataset_name, dataset_version, ret
 
         if template_frequency < frequency_target:
             append_list_to_file(f'{folder_path}/full_{name_to_save}.txt', saved_rxns)
-
-        else:
-            how_many_to_append = frequency_target - (template_frequency - len(saved_rxns))
-            append_n_elements_to_file(f'{folder_path}/full_{name_to_save}.txt', saved_rxns, how_many_to_append)
-            template_frequency = template_frequency - len(saved_rxns) + how_many_to_append
-
-            #when reaching the target, remove the created subsets to avoid using memory space
+            
+            #remove the created subsets to avoid using memory space --> transform into function
             folder_path = f'./results/datasets/{dataset_name}'
             folder_path_mol = f'./results/datasets/{dataset_name}_mol'
             name        = f'{dataset_name}_sub_{dataset_version}_{retro_reac}'
             os.remove(f'{folder_path}/{name}.txt')      #remove smiles subset
             os.remove(f'{folder_path_mol}/{name}.pkl')  #remove mol subsets
 
-        os.remove(f'{folder_path}/{name}.txt') #remove the file with the saved reactions to only keep the file containing all the reactions
+        else:
+            how_many_to_append = frequency_target - (template_frequency - len(saved_rxns))
+            append_n_elements_to_file(f'{folder_path}/full_{name_to_save}.txt', saved_rxns, how_many_to_append)
+            template_frequency = template_frequency - len(saved_rxns) + how_many_to_append
+
+            #remove the created subsets to avoid using memory space --> transform into function
+            folder_path = f'./results/datasets/{dataset_name}'
+            folder_path_mol = f'./results/datasets/{dataset_name}_mol'
+            name        = f'{dataset_name}_sub_{dataset_version}_{retro_reac}'
+            os.remove(f'{folder_path}/{name}.txt')      #remove smiles subset
+            os.remove(f'{folder_path_mol}/{name}.pkl')  #remove mol subsets
+
 
     return template_frequency
 
