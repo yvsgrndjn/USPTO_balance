@@ -192,7 +192,7 @@ def append_saved_rxns_until_enrichment_target(dataset_name, dataset_version, ret
 # main definition    -------
 def main(dataset_name, retro_reac, retro_template, path_to_folder, path_models, template_frequency, frequency_target: int = 10000):
     print('In main')
-    counter = 0
+    counter = 1
     initial_template_frequency = template_frequency
 
     while template_frequency < frequency_target and counter <= 100:
@@ -203,7 +203,7 @@ def main(dataset_name, retro_reac, retro_template, path_to_folder, path_models, 
         validate_created_reactions(dataset_name, counter, retro_reac, retro_template, path_to_folder, path_models)
         template_frequency = append_saved_rxns_until_enrichment_target(dataset_name, counter, retro_reac, retro_template, template_frequency, frequency_target)
         counter += 1
-        
+
     print(f'Enriched initial {initial_template_frequency} reactions to {template_frequency} for retro_reac: {retro_reac} and retro_template: {retro_template}')
 
 
