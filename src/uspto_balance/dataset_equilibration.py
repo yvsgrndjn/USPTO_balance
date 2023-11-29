@@ -183,6 +183,10 @@ def main(dataset_name, retro_reac, retro_template, path_to_folder, path_models, 
     counter = 0
     initial_template_frequency = template_frequency
 
+    #take care of the '/' character in the names that might cause errors
+    retro_reac = retro_reac.replace('/', 'slash')
+    retro_template = retro_template.replace('/', 'slash')
+
     while template_frequency < frequency_target and counter <= 100:
         print(f'Iteration {counter}')
         counter += 1

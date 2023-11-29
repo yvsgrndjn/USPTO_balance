@@ -162,7 +162,11 @@ def reactions_conf_validation(dataset_name, dataset_version, template_version, r
 
 
 def main(dataset_name, dataset_version, template_version, retro_reac, retro_template, Model_path_T2, Model_path_T3):
-
+    
+    #take care of the '/' character in the names that might cause errors
+    retro_reac = retro_reac.replace('/', 'slash')
+    retro_template = retro_template.replace('/', 'slash')
+    
     reactions_conf_validation(dataset_name, dataset_version, template_version, retro_reac, retro_template, Model_path_T2, Model_path_T3)
 
 

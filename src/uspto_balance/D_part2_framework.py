@@ -138,6 +138,10 @@ def read_config(config_file):
 
 def main(dataset_name, dataset_version, template_version, retro_reac, retro_template):
     
+    #take care of the '/' character in the names that might cause errors
+    retro_reac = retro_reac.replace('/', 'slash')
+    retro_template = retro_template.replace('/', 'slash')
+    
     process_retro_template(retro_reac, retro_template, dataset_version, template_version, dataset_name)
 
 
