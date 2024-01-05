@@ -16,10 +16,9 @@ def load_rxns(dataset_name, dataset_version, template_version, retro_reac, retro
     Loads the rxns list that were created in part 2 of the dataset subset matching the retro_reac pattern and applying retro_template to it
     '''
     try:
-        folder_path     = f'./results/created_rxns/{dataset_name}'
-        #name           = f'rxns_{dataset_version}_{retro_reac}_{retro_template}' 
-        template_version= f"{retro_reac}".replace('/', 'slash') #new -------------
-        name            = f'rxns_{dataset_version}_{template_version}_{retro_template}'
+        folder_path = f'./results/created_rxns/{dataset_name}'
+        template_version= f"{retro_reac}".replace('/', 'slash')
+        name =          f'{dataset_name}_sub_{dataset_version}_{template_version}'
 
         with open(f'{folder_path}/{name}.txt', 'r') as f:
             rxns_list = []
@@ -27,7 +26,7 @@ def load_rxns(dataset_name, dataset_version, template_version, retro_reac, retro
             rxns_list = [rxns_list[i].split('\n')[0] for i in range(len(rxns_list))]
 
         return rxns_list
-    
+
     except FileNotFoundError:
         print(f'No reactions found for retro_reac: {retro_reac} and retro_template: {retro_template}')
 
@@ -100,7 +99,7 @@ def find_ind_match_T3_preds_ref(preds_T3, rxns_list):
     return ind
 
 
-def keeps_match_confident_rxns(rxns_list, probs_T3, ind_match, conf_score = 0.9):
+def keeps_match_confident_rxns(rxns_list, probs_T3, ind_match, conf_score = 0.95):
     '''
     
     '''
@@ -115,9 +114,8 @@ def save_conf_rxns(rxns_conf, dataset_name, dataset_version, template_version, r
     retro_template = retro_template.replace('/', 'slash')
 
     folder_path     = f'./results/saved_rxns/{dataset_name}'
-    #name           = f'rxns_{dataset_version}_{retro_reac}_{retro_template}'
-    template_version= f"{retro_reac}".replace('/', 'slash') #new -------------
-    name            = f'rxns_{dataset_version}_{template_version}_{retro_template}'
+    template_version= f"{retro_reac}".replace('/', 'slash')
+    name =          f'{dataset_name}_sub_{dataset_version}_{template_version}'
 
     if not os.path.exists(folder_path):
         os.makedirs(folder_path)
@@ -132,11 +130,9 @@ def save_conf_rxns(rxns_conf, dataset_name, dataset_version, template_version, r
 def delete_evaluated_rxns(dataset_name, dataset_version, template_version, retro_reac, retro_template):
 
     retro_template = retro_template.replace('/', 'slash')
-
     folder_path     = f'./results/created_rxns/{dataset_name}'
-    #name           = f'rxns_{dataset_version}_{retro_reac}_{retro_template}'
-    template_version= f"{retro_reac}".replace('/', 'slash') #new -------------
-    name            = f'rxns_{dataset_version}_{template_version}_{retro_template}'
+    template_version= f"{retro_reac}".replace('/', 'slash')
+    name =          f'{dataset_name}_sub_{dataset_version}_{template_version}'
 
     os.remove(f'{folder_path}/{name}.txt')
 
