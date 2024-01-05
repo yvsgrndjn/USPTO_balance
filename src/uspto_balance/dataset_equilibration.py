@@ -150,41 +150,45 @@ def append_n_elements_to_file(path_to_file, list_to_append, n_elements):
             f.write(list_to_append[i] + '\n')
 
 
+def delete_dataset_subsets(dataset_name, dataset_version, retro_reac, folder_path):
+    '''
+    Delete the .txt and .pkl subsets of the dataset created in C_part1_framework.py
+    to free some memory (some datasets might be recalculated several times)
+    '''
+    folder_path     = f'./results/datasets/{dataset_name}'
+    folder_path_mol = f'./results/datasets/{dataset_name}_mol'
+    name            = f'{dataset_name}_sub_{dataset_version}_{retro_reac}'
+    os.remove(f'{folder_path}/{name}.txt')
+    os.remove(f'{folder_path_mol}/{name}.pkl')
+
+
 def append_saved_rxns_until_enrichment_target(dataset_name, dataset_version, retro_reac, retro_template, template_frequency, frequency_target: int = 10000):
     print('In append_saved_rxns_until_enrichment_target')
 
     retro_reac     = retro_reac.replace('/', 'slash')
     retro_template = retro_template.replace('/', 'slash')
-    folder_path  = f'./results/saved_rxns/{dataset_name}'
-    name         = f'rxns_{dataset_version}_{retro_reac}_{retro_template}'
-    name_to_save = f'rxns_{retro_reac}_{retro_template}'
+    folder_path    = f'./results/saved_rxns/{dataset_name}'
+    name           = f'{dataset_name}_sub_{dataset_version}_{retro_reac}'
     
     if os.path.exists(f'{folder_path}/{name}.txt'):
         saved_rxns = get_txt_file(f'{folder_path}/{name}.txt')
         template_frequency += len(saved_rxns)
 
         if template_frequency < frequency_target:
-            append_list_to_file(f'{folder_path}/full_{name_to_save}.txt', saved_rxns)
+            append_list_to_file(f'{folder_path}/full_{name}.txt', saved_rxns)
             
-            #remove the created subsets to avoid using memory space --> transform into function
-            folder_path = f'./results/datasets/{dataset_name}'
-            folder_path_mol = f'./results/datasets/{dataset_name}_mol'
-            name        = f'{dataset_name}_sub_{dataset_version}_{retro_reac}'
-            os.remove(f'{folder_path}/{name}.txt')      #remove smiles subset
-            os.remove(f'{folder_path_mol}/{name}.pkl')  #remove mol subsets
+            #remove the created subsets to avoid using memory space
+            delete_dataset_subsets(dataset_name, dataset_version, retro_reac, folder_path)
 
         else:
             how_many_to_append = frequency_target - (template_frequency - len(saved_rxns))
-            append_n_elements_to_file(f'{folder_path}/full_{name_to_save}.txt', saved_rxns, how_many_to_append)
+            append_n_elements_to_file(f'{folder_path}/full_{name}.txt', saved_rxns, how_many_to_append)
             template_frequency = template_frequency - len(saved_rxns) + how_many_to_append
 
-            #remove the created subsets to avoid using memory space --> transform into function
-            folder_path = f'./results/datasets/{dataset_name}'
-            folder_path_mol = f'./results/datasets/{dataset_name}_mol'
-            name        = f'{dataset_name}_sub_{dataset_version}_{retro_reac}'
-            os.remove(f'{folder_path}/{name}.txt')      #remove smiles subset
-            os.remove(f'{folder_path_mol}/{name}.pkl')  #remove mol subsets
-
+            #remove the created subsets to avoid using memory space
+            delete_dataset_subsets(dataset_name, dataset_version, retro_reac, folder_path)
+    else:
+        print(f'No reactions found under: {folder_path}/{name}.txt (append_saved_rxns_until_enrichment_target)')
 
     return template_frequency
 
