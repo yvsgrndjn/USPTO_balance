@@ -3,6 +3,7 @@ import os
 import yaml
 import argparse
 import sys
+import shutil
 
 
 #module imports
@@ -162,6 +163,19 @@ def delete_dataset_subsets(dataset_name, dataset_version, retro_reac, folder_pat
     os.remove(f'{folder_path_mol}/{name}.pkl')
 
 
+def delete_all_files_from_folder(path, dataset_name):
+    folder_path = f'{path}/{dataset_name}'
+    for filename in os.listdir(folder_path):
+        file_path = os.path.join(folder_path, filename)
+        try:
+            if os.path.isfile(file_path) or os.path.islink(file_path):
+                os.unlink(file_path)
+            elif os.path.isdir(file_path):
+                shutil.rmtree(file_path)
+        except Exception as e:
+            print('Failed to delete %s. Reason: %s' % (file_path, e))
+
+
 def append_saved_rxns_until_enrichment_target(dataset_name, dataset_version, retro_reac, retro_template, template_frequency, frequency_target: int = 10000):
     print('In append_saved_rxns_until_enrichment_target')
 
@@ -169,26 +183,26 @@ def append_saved_rxns_until_enrichment_target(dataset_name, dataset_version, ret
     retro_template = retro_template.replace('/', 'slash')
     folder_path    = f'./results/saved_rxns/{dataset_name}'
     name           = f'{dataset_name}_sub_{dataset_version}_{retro_reac}'
-    
+    name_to_save   = f'{dataset_name}_{retro_reac}_{retro_template}'
+
     if os.path.exists(f'{folder_path}/{name}.txt'):
         saved_rxns = get_txt_file(f'{folder_path}/{name}.txt')
         template_frequency += len(saved_rxns)
 
         if template_frequency < frequency_target:
-            append_list_to_file(f'{folder_path}/full_{name}.txt', saved_rxns)
-            
-            #remove the created subsets to avoid using memory space
-            delete_dataset_subsets(dataset_name, dataset_version, retro_reac, folder_path)
+            append_list_to_file(f'{folder_path}/full_{name_to_save}.txt', saved_rxns)
 
         else:
             how_many_to_append = frequency_target - (template_frequency - len(saved_rxns))
-            append_n_elements_to_file(f'{folder_path}/full_{name}.txt', saved_rxns, how_many_to_append)
+            append_n_elements_to_file(f'{folder_path}/full_{name_to_save}.txt', saved_rxns, how_many_to_append)
             template_frequency = template_frequency - len(saved_rxns) + how_many_to_append
 
-            #remove the created subsets to avoid using memory space
-            delete_dataset_subsets(dataset_name, dataset_version, retro_reac, folder_path)
     else:
         print(f'No reactions found under: {folder_path}/{name}.txt (append_saved_rxns_until_enrichment_target)')
+
+    #remove the created subsets to avoid using memory space
+    if os.path.exists(f'{folder_path}/{name}.txt'):
+        delete_dataset_subsets(dataset_name, dataset_version, retro_reac, folder_path)
 
     return template_frequency
 
@@ -201,15 +215,23 @@ def main(dataset_name, retro_reac, retro_template, path_to_folder, path_models, 
 
     while template_frequency < frequency_target and counter <= 100:
         print(f'Iteration {counter}')
-
+        template_frequency_before = template_frequency
         extract_subset_from_dataset(dataset_name, counter, retro_reac, retro_template, path_to_folder)
         create_reactions_using_template(dataset_name, counter, retro_reac, retro_template, path_to_folder)
         validate_created_reactions(dataset_name, counter, retro_reac, retro_template, path_to_folder, path_models)
         template_frequency = append_saved_rxns_until_enrichment_target(dataset_name, counter, retro_reac, retro_template, template_frequency, frequency_target)
         counter += 1
+        
+        added_reactions = template_frequency - template_frequency_before
+        print(f'Validated {added_reactions} reactions added to the actual {template_frequency_before} (total of reactions = {template_frequency} / {frequency_target})for retro_reac: {retro_reac} and retro_template: {retro_template}')
 
-    print(f'Enriched initial {initial_template_frequency} reactions to {template_frequency} for retro_reac: {retro_reac} and retro_template: {retro_template}')
-
+    print(f'Enrichment finished (with counter = {counter}):  initial {initial_template_frequency} reactions were enriched to {template_frequency} for retro_reac: {retro_reac} and retro_template: {retro_template}')
+    
+    print('Delete remaining files...')
+    delete_all_files_from_folder(f'./results/datasets', dataset_name)
+    delete_all_files_from_folder(f'./results/datasets', f'{dataset_name}_mol')
+    delete_all_files_from_folder(f'./results/created_rxns', dataset_name)
+    print('Done')
 
 def main_balance():
     print('In main_balance')
