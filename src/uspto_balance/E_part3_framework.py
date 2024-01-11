@@ -11,14 +11,16 @@ from ttlretro.single_step_retro import SingleStepRetrosynthesis
 singlestepretrosynthesis = SingleStepRetrosynthesis()
 
 
-def load_rxns(dataset_name, dataset_version, template_version, retro_reac, retro_template, rxns_number = 10000):
+def load_rxns(dataset_name, dataset_version, template_hash_version, retro_reac, retro_template, rxns_number = 10000):
     '''
     Loads the rxns list that were created in part 2 of the dataset subset matching the retro_reac pattern and applying retro_template to it
     '''
     try:
         folder_path = f'./results/created_rxns/{dataset_name}'
-        template_version= f"{retro_reac}".replace('/', 'slash')
-        name =          f'{dataset_name}_sub_{dataset_version}_{template_version}'
+
+        #template_version= f"{retro_reac}".replace('/', 'slash')
+        #name =          f'{dataset_name}_sub_{dataset_version}_{template_version}'
+        name =         f'{dataset_name}_sub_{dataset_version}_{template_hash_version}' #new -------------
 
         with open(f'{folder_path}/{name}.txt', 'r') as f:
             rxns_list = []
@@ -31,6 +33,14 @@ def load_rxns(dataset_name, dataset_version, template_version, retro_reac, retro
         print(f'No reactions found for retro_reac: {retro_reac} and retro_template: {retro_template}')
 
         return []
+
+
+def remove_incomplete_rxns(rxns_list):
+    indices_to_remove = [i for i, value in enumerate(rxns_list) if value[0] == '>']
+
+    for index in reversed(indices_to_remove):
+        del rxns_list[index]
+    return rxns_list
 
 
 def tokenize_rxn_list(rxns_list):
@@ -91,17 +101,30 @@ def find_ind_match_T3_preds_ref(preds_T3, rxns_list):
     '''
     Takes as input the forward predictions of T3 and the original reactions list, returns the indices of the predicted products matching the original products (returns indices of forward validated reactions)
     '''
-    preds_T3 = [singlestepretrosynthesis.canonicalize_smiles(i) for i in preds_T3]
-
-    preds_ref = [rxns_list[i].split('>>')[1] for i in range(len(rxns_list))]
-    ind = [i for i in range(len(preds_T3)) if preds_T3[i] == preds_ref[i]]
+    preds_T3 = [singlestepretrosynthesis.canonicalize_smiles(i) for i in preds_T3] #maybe not needed
     
-    return ind
+    preds_ref = [singlestepretrosynthesis.canonicalize_smiles(rxns_list[i].split('>>')[1]) for i in range(len(rxns_list))] 
+    ind_match = [i for i in range(len(preds_T3)) if preds_T3[i] == preds_ref[i]]
+    
+    return ind_match
+
+
+def add_reagents_to_rxns_list(rxns_list, preds_T2, ind_match):
+    '''
+    Add reagents to the rxns_list
+    '''
+    #reagents_list = [preds_T2[i] for i in ind_match], preds_T2 is already prepared in prepare_rxns_T2_for_T3
+    
+    #check size rxns_list and reagents_list are the same
+
+    rxns_list_with_reagents = [rxns_list[i].split('>>')[0] + '>' + preds_T2[i] + '>' + rxns_list[i].split('>>')[1] for i in ind_match]
+    
+    return rxns_list_with_reagents
 
 
 def keeps_match_confident_rxns(rxns_list, probs_T3, ind_match, conf_score = 0.95):
     '''
-    
+    V1-first element
     '''
     ind_keep = [probs_T3[i] > conf_score for i in range(len(probs_T3))]
     rxns_conf = [rxns_list[i] for i in range(len(ind_keep)) if ind_keep[i] == True and i in ind_match]
@@ -109,13 +132,28 @@ def keeps_match_confident_rxns(rxns_list, probs_T3, ind_match, conf_score = 0.95
     return rxns_conf
 
 
-def save_conf_rxns(rxns_conf, dataset_name, dataset_version, template_version, retro_reac, retro_template):
+def keeps_val_rxns_and_scores(rxns_list, probs_T3, ind_match): 
+    '''
+    V2-first element (modified from keeps_match_confident_rxns)
+    '''
+    #rxns_val    = [rxns_list[i] for i in ind_match]
+    rxns_val = rxns_list #because the sorting is done in previous steps
+    conf_scores = [probs_T3[i] for i in ind_match]
 
+    return rxns_val, conf_scores
+
+
+def save_conf_rxns(rxns_conf, dataset_name, dataset_version, template_hash_version, retro_reac, retro_template):
+    '''
+    V1-second element
+    '''
     retro_template = retro_template.replace('/', 'slash')
 
     folder_path     = f'./results/saved_rxns/{dataset_name}'
-    template_version= f"{retro_reac}".replace('/', 'slash')
-    name =          f'{dataset_name}_sub_{dataset_version}_{template_version}'
+
+    #template_version= f"{retro_reac}".replace('/', 'slash')
+    #name =          f'{dataset_name}_sub_{dataset_version}_{template_version}'
+    name =        f'{dataset_name}_sub_{dataset_version}_{template_hash_version}' #new -------------
 
     if not os.path.exists(folder_path):
         os.makedirs(folder_path)
@@ -127,12 +165,41 @@ def save_conf_rxns(rxns_conf, dataset_name, dataset_version, template_version, r
     print(f'Validated and saved {len(rxns_conf)} reactions for retro_reac: {retro_reac} and retro_template: {retro_template}')
 
 
-def delete_evaluated_rxns(dataset_name, dataset_version, template_version, retro_reac, retro_template):
+def save_rxns_and_conf_to_pkl(rxns_val, conf_scores, dataset_name, dataset_version, template_hash_version, retro_reac, retro_template):
+    '''
+    V2-second element (modified from save_conf_xns)
+    '''
+    retro_template = retro_template.replace('/', 'slash')
+
+    folder_path     = f'./results/saved_rxns/{dataset_name}'
+
+    #template_version= f"{retro_reac}".replace('/', 'slash')
+    #name =          f'{dataset_name}_sub_{dataset_version}_{template_version}'
+    name =        f'{dataset_name}_sub_{dataset_version}_{template_hash_version}' #new -------------
+
+    if not os.path.exists(folder_path):
+        os.makedirs(folder_path)
+
+    #create dataframe with the reactions and the confidence scores
+    df = pd.DataFrame({'rxns': rxns_val, 'conf_scores': conf_scores})
+    df.to_csv(f'{folder_path}/{name}.csv', index=False)
+
+    #with open(f'{folder_path}/{name}.txt', 'w') as f:
+    #    for item in rxns_conf:
+    #        f.write(item + '\n')
+
+    print(f'Validated and saved {len(rxns_val)} reactions for retro_reac: {retro_reac} and retro_template: {retro_template}')
+
+
+
+def delete_evaluated_rxns(dataset_name, dataset_version, template_hash_version, retro_reac, retro_template):
 
     retro_template = retro_template.replace('/', 'slash')
     folder_path     = f'./results/created_rxns/{dataset_name}'
-    template_version= f"{retro_reac}".replace('/', 'slash')
-    name =          f'{dataset_name}_sub_{dataset_version}_{template_version}'
+    
+    #template_version= f"{retro_reac}".replace('/', 'slash')
+    #name =          f'{dataset_name}_sub_{dataset_version}_{template_version}'
+    name =        f'{dataset_name}_sub_{dataset_version}_{template_hash_version}' #new -------------
 
     os.remove(f'{folder_path}/{name}.txt')
 
@@ -146,26 +213,31 @@ def read_config(config_file):
     return config
 
 
-def reactions_conf_validation(dataset_name, dataset_version, template_version, retro_reac, retro_template, Model_path_T2, Model_path_T3):
+def reactions_conf_validation(dataset_name, dataset_version, template_hash_version, retro_reac, retro_template, Model_path_T2, Model_path_T3):
 
-    rxns_list = load_rxns(dataset_name, dataset_version, template_version, retro_reac, retro_template)
+    rxns_list = load_rxns(dataset_name, dataset_version, template_hash_version, retro_reac, retro_template)
 
     if not rxns_list:
         return
-    
+    rxns_list = remove_incomplete_rxns(rxns_list) #new (3)
     tok_rxns_list = tokenize_rxn_list(rxns_list)
     preds_T2 = run_T2_predictions(tok_rxns_list, Model_path_T2, beam_size = 1, batch_size = 64, untokenize_output = True)
     rxns_T2_to_T3_tok = prepare_rxns_T2_for_T3(rxns_list, preds_T2)
     preds_T3, probs_T3 = run_T3_predictions(rxns_T2_to_T3_tok, Model_path_T3, beam_size = 3, batch_size = 64, untokenize_output = True)
     ind_match = find_ind_match_T3_preds_ref(preds_T3, rxns_list)
-    rxns_conf = keeps_match_confident_rxns(rxns_list, probs_T3, ind_match, conf_score = 0.9)
-    save_conf_rxns(rxns_conf, dataset_name, dataset_version, template_version, retro_reac, retro_template)
-    delete_evaluated_rxns(dataset_name, dataset_version, template_version, retro_reac, retro_template)
+    rxns_list_with_reagents = add_reagents_to_rxns_list(rxns_list, preds_T2, ind_match)
+    #rxns_conf = keeps_match_confident_rxns(rxns_list, probs_T3, ind_match, conf_score = 0.9) (V1)
+    #rxns_val, conf_scores = keeps_val_rxns_and_scores(rxns_list, probs_T3, ind_match) (2)
+    rxns_val, conf_scores = keeps_val_rxns_and_scores(rxns_list_with_reagents, probs_T3, ind_match) #new (3)
+    #save_conf_rxns(rxns_conf, dataset_name, dataset_version, template_hash_version, retro_reac, retro_template)
+    save_rxns_and_conf_to_pkl(rxns_val, conf_scores, dataset_name, dataset_version, template_hash_version, retro_reac, retro_template)
+
+    delete_evaluated_rxns(dataset_name, dataset_version, template_hash_version, retro_reac, retro_template)
 
 
-def main(dataset_name, dataset_version, template_version, retro_reac, retro_template, Model_path_T2, Model_path_T3):
+def main(dataset_name, dataset_version, template_hash_version, retro_reac, retro_template, Model_path_T2, Model_path_T3):
     
-    reactions_conf_validation(dataset_name, dataset_version, template_version, retro_reac, retro_template, Model_path_T2, Model_path_T3)
+    reactions_conf_validation(dataset_name, dataset_version, template_hash_version, retro_reac, retro_template, Model_path_T2, Model_path_T3)
 
 
 if __name__ == '__main__':
@@ -185,7 +257,8 @@ if __name__ == '__main__':
     main(
         config['dataset_name'],
         config['dataset_version'],
-        config['template_version'],
+        #config['template_version'],
+        config['template_hash_version'], #new -------------
         config['retro_reac'],
         config['retro_template'],
         config['Model_path_T2'],

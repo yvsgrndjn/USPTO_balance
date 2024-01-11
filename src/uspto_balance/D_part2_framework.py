@@ -13,7 +13,7 @@ from ttlretro.single_step_retro import SingleStepRetrosynthesis
 singlestepretrosynthesis = SingleStepRetrosynthesis()
 
 
-def load_subsets(retro_reac: str = '', dataset_version: str = '', template_version: str = '', dataset_name: str = ''): 
+def load_subsets(retro_reac: str = '', dataset_version: str = '', template_hash_version: str = '', dataset_name: str = ''): 
     '''
     Loads both SMILES and mol versions that were calculated in part 1 of the dataset subset matching the retro_reac pattern. 
     dataset version is the subset's number
@@ -21,9 +21,10 @@ def load_subsets(retro_reac: str = '', dataset_version: str = '', template_versi
     
     folder_path     = f'./results/datasets/{dataset_name}'
     folder_path_mol = f'./results/datasets/{dataset_name}_mol'
-    #name            = f'{dataset_name}_sub_{dataset_version}_{retro_reac}'
-    template_version= f"{retro_reac}".replace('/', 'slash') #new -------------   
-    name            = f'{dataset_name}_sub_{dataset_version}_{template_version}'
+    
+    #template_version= f"{retro_reac}".replace('/', 'slash')    
+    #name            = f'{dataset_name}_sub_{dataset_version}_{template_version}'
+    name            = f'{dataset_name}_sub_{dataset_version}_{template_hash_version}' #new -------------
 
     try:
         with open(f'{folder_path}/{name}.txt', 'r') as f:
@@ -38,7 +39,7 @@ def load_subsets(retro_reac: str = '', dataset_version: str = '', template_versi
         return [], []
 
 
-def save_rxns(rxns_list, retro_reac, retro_template, dataset_version: str = '', template_version: str = '', dataset_name: str = ''):
+def save_rxns(rxns_list, retro_reac, retro_template, dataset_version: str = '', template_hash_version: str = '', dataset_name: str = ''):
     '''
     Saves the rxn list in a txt file, retro_reac is the SMARTS pattern of the product of the reaction,
     retro_template is the template that is applied on retro_reac
@@ -49,9 +50,10 @@ def save_rxns(rxns_list, retro_reac, retro_template, dataset_version: str = '', 
 
     if rxns_list:
         folder_path     = f'./results/created_rxns/{dataset_name}'
-        #name           = f'rxns_{dataset_version}_{retro_reac}_{retro_template}'
-        template_version= f"{retro_reac}".replace('/', 'slash') #new -------------
-        name            = f'{dataset_name}_sub_{dataset_version}_{template_version}'
+
+        #template_version= f"{retro_reac}".replace('/', 'slash')
+        #name            = f'{dataset_name}_sub_{dataset_version}_{template_version}'
+        name           = f'{dataset_name}_sub_{dataset_version}_{template_hash_version}' #new -------------
 
         #Create the folder if it does not exist
         if not os.path.exists(folder_path):
@@ -92,7 +94,7 @@ def format_reaction(reactants_tuple: tuple, smi : str):
         reactants_mol = list(reactants_tuple[i])
 
         reactants_smiles = ''
-        #reactants_smiles_list = []
+
         for j in range(len(reactants_mol)):
             reactants_smiles += Chem.MolToSmiles(reactants_mol[j]) + '.'
         reactants_smiles = reactants_smiles[:-1]
@@ -104,10 +106,11 @@ def format_reaction(reactants_tuple: tuple, smi : str):
     return rxn
 
 
-def process_retro_template(retro_reac, retro_template, dataset_version: str = '', template_version: str = '', dataset_name: str = ''):
+def process_retro_template(retro_reac, retro_template, dataset_version: str = '', template_hash_version: str = '', dataset_name: str = ''):
     
-    dataset_sub, dataset_sub_mol = load_subsets(retro_reac, dataset_version, template_version, dataset_name)
-
+    #dataset_sub, dataset_sub_mol = load_subsets(retro_reac, dataset_version, template_version, dataset_name)
+    dataset_sub, dataset_sub_mol = load_subsets(retro_reac, dataset_version, template_hash_version, dataset_name) #new -------------
+    
     if not dataset_sub:
         return
 
@@ -128,7 +131,9 @@ def process_retro_template(retro_reac, retro_template, dataset_version: str = ''
         pass
 
     # Save in a txt file
-    save_rxns(fictive_rxns_list, retro_reac, retro_template, dataset_version, template_version, dataset_name)
+    
+    #save_rxns(fictive_rxns_list, retro_reac, retro_template, dataset_version, template_version, dataset_name)
+    save_rxns(fictive_rxns_list, retro_reac, retro_template, dataset_version, template_hash_version, dataset_name) #new -------------
 
 
 def read_config(config_file):
@@ -140,9 +145,9 @@ def read_config(config_file):
     return config
 
 
-def main(dataset_name, dataset_version, template_version, retro_reac, retro_template):
+def main(dataset_name, dataset_version, template_hash_version, retro_reac, retro_template):
     
-    process_retro_template(retro_reac, retro_template, dataset_version, template_version, dataset_name)
+    process_retro_template(retro_reac, retro_template, dataset_version, template_hash_version, dataset_name)
 
 
 if __name__ == '__main__':
@@ -162,7 +167,8 @@ if __name__ == '__main__':
     main(
         config['dataset_name'],
         config['dataset_version'],
-        config['template_version'],
+        #config['template_version'],
+        config['template_hash_version'], #new -------------
         config['retro_reac'],
         config['retro_template']
         )

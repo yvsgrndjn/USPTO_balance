@@ -23,7 +23,7 @@ def smiles_to_mol(smi):
     return mol
 
 
-def do_subsets_exist_already(dataset_name: str, dataset_version: str, retro_reac: str):
+def do_subsets_exist_already(dataset_name: str, dataset_version: str, template_hash_version): #retro_reac: str):
     '''
     Checks if the subsets matching a retro_reac pattern in the dataset version have already been extracted.
     Returns True if they exist, False otherwise
@@ -35,9 +35,10 @@ def do_subsets_exist_already(dataset_name: str, dataset_version: str, retro_reac
     '''
     folder_path     = f'./results/datasets/{dataset_name}'
     folder_path_mol = f'./results/datasets/{dataset_name}_mol'
-    template_version= f"{retro_reac}".replace('/', 'slash') #new -------------
-    #name            = f'{dataset_name}_sub_{dataset_version}_{retro_reac}'    
-    name            = f'{dataset_name}_sub_{dataset_version}_{template_version}'    
+    
+    #template_version= f"{retro_reac}".replace('/', 'slash')
+    #name            = f'{dataset_name}_sub_{dataset_version}_{template_version}'
+    name            = f'{dataset_name}_sub_{dataset_version}_{template_hash_version}'        
 
     if os.path.exists(f'{folder_path}/{name}.txt') and os.path.exists(f'{folder_path_mol}/{name}.pkl'):
         return True
@@ -45,15 +46,16 @@ def do_subsets_exist_already(dataset_name: str, dataset_version: str, retro_reac
         return False
 
 
-def convert_and_save_subset(subset, subset_mol, dataset_name:str, retro_reac, dataset_version: str = '', template_version: str = ''):
+def convert_and_save_subset(subset, subset_mol, dataset_name:str, retro_reac, dataset_version: str = '', template_hash_version: str = ''): #template_version: str = ''):
     '''
     Saves a subset of SMILES strings to a txt file and converts it to mol before saving it to a pkl file
     '''
     if subset:
         folder_path     = f'./results/datasets/{dataset_name}'
-        #name           = f'{dataset_name}_sub_{dataset_version}_{retro_reac}'
-        template_version= f"{retro_reac}".replace('/', 'slash') #new -------------
-        name            = f'{dataset_name}_sub_{dataset_version}_{template_version}'
+        
+        #template_version= f"{retro_reac}".replace('/', 'slash')
+        #name            = f'{dataset_name}_sub_{dataset_version}_{template_version}'
+        name            = f'{dataset_name}_sub_{dataset_version}_{template_hash_version}' #new -------------
         
         #Create the folder if it does not exist
         if not os.path.exists(folder_path):
@@ -88,6 +90,15 @@ def canonicalize(smiles):
 def extract_match_smiles_from_dataset(dataset:list, dataset_mol:list, template:str):
     """
     This function extracts the elements from a smiles dataset that match a certain template and canonicalizes them
+
+    Inputs:
+    dataset: list of smiles strings
+    dataset_mol: list of mol objects corresponding to the smiles strings
+    template: SMARTS pattern of the substructure to match
+
+    Returns:
+    dataset_sub: list of smiles strings containing the substructure matches
+    dataset_sub_mol: list of mol objects corresponding to the smiles strings containing the substructure matches
     """
     #convert template to mol
     template_mol    = Chem.MolFromSmarts(template)
@@ -118,10 +129,10 @@ def read_config(config_file):
     return config
 
 
-def main(dataset_name, dataset_path, dataset_version, template_version, retro_reac, retro_template):
+def main(dataset_name, dataset_path, dataset_version, template_hash_version, retro_reac, retro_template):
 
-    if do_subsets_exist_already(dataset_name, dataset_version, retro_reac):
-        print(f'The subsets for dataset {dataset_name} and retro_reac {retro_reac} already exist')
+    if do_subsets_exist_already(dataset_name, dataset_version, template_hash_version): #retro_reac):
+        print(f'The subsets for dataset {dataset_name} and template_hash_version {template_hash_version} already exist') #retro_reac {retro_reac} already exist')
         pass
 
     else:
@@ -141,7 +152,7 @@ def main(dataset_name, dataset_path, dataset_version, template_version, retro_re
         df = df[[not el for el in df['mol'].isnull().values]]
 
         dataset_sub, dataset_sub_mol = extract_match_smiles_from_dataset(dataset=df['smiles'], dataset_mol=df['mol'], template = retro_reac)
-        convert_and_save_subset(dataset_sub, dataset_sub_mol, dataset_name, retro_reac, dataset_version, template_version)
+        convert_and_save_subset(dataset_sub, dataset_sub_mol, dataset_name, retro_reac, dataset_version, template_hash_version) #template_version)
 
 
 if __name__ == '__main__':
@@ -162,7 +173,8 @@ if __name__ == '__main__':
         config['dataset_name'],
         config['dataset_path'],
         config['dataset_version'],
-        config['template_version'],
+        #config['template_version'],
+        config['template_hash_version'],
         config['retro_reac'],
         config['retro_template']
         )

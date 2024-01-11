@@ -524,7 +524,7 @@ def append_saved_rxns_until_enrichment_target(dataset_name, dataset_version, ret
 #Functions used in other steps than the actual dataset equilibration ------------------------------
 
 
-def select_templates_to_enrich(data: pd.Series, min_number: int = 10, target_number: int = 10000):
+def select_templates_to_enrich(data: pd.Series, min_number: int = 5, target_number: int = 100000): 
     """
     Takes a Pandas Series of template hashes and returns the list of hashes that meet enrichment requirements along with their frequencies.
 
