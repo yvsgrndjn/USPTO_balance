@@ -13,30 +13,110 @@ from ttlretro.single_step_retro import SingleStepRetrosynthesis
 singlestepretrosynthesis = SingleStepRetrosynthesis()
 
 
-def load_subsets(retro_reac: str = '', dataset_version: str = '', template_hash_version: str = '', dataset_name: str = ''): 
+def load_subsets(retro_reac: str = '', dataset_version: str = '', template_hash_version: str = '', dataset_name: str = '')-> list: 
     '''
-    Loads both SMILES and mol versions that were calculated in part 1 of the dataset subset matching the retro_reac pattern. 
-    dataset version is the subset's number
-    '''
+    Loads both SMILES and mol subsets composed of molecules from f'{dataset_name}_{dataset_version}' dataset containing SMARTS substructure retro_reac 
     
+    --Inputs--
+    retro_reac (str):             SMARTS pattern of the substructure to match
+    dataset_version (str):        version of the dataset (str) being any integer from 1 to 100.
+    template_hash_version (str):  Allows to trace back the template to the templates dataframe, it is constructed as follows. 
+                                    template_hash_version = f"{template_hash}_{template_line}"
+    dataset_name (str):           name of the dataset (str) ex: GDB13S, USPTO. Prerequisite (for the module, not the function): The dataset divided in 100 different
+                                    files in the format {dataset_name}_i.txt for i from 1 to 100 must be present in the folder dataset_balance/data/
+
+    --Returns--
+    dataset_sub (list):           list of smiles strings containing the substructure matches. Subset of the input dataset.
+    dataset_sub_mol (list):       list of mol objects corresponding to the smiles strings containing the substructure matches. Subset of the input dataset_mol.
+    '''
+    # Define paths and file names
     folder_path     = f'./results/datasets/{dataset_name}'
     folder_path_mol = f'./results/datasets/{dataset_name}_mol'
-    
-    #template_version= f"{retro_reac}".replace('/', 'slash')    
-    #name            = f'{dataset_name}_sub_{dataset_version}_{template_version}'
-    name            = f'{dataset_name}_sub_{dataset_version}_{template_hash_version}' #new -------------
+    name            = f'{dataset_name}_sub_{dataset_version}_{template_hash_version}'
 
+    # Load the subsets if they exist
     try:
         with open(f'{folder_path}/{name}.txt', 'r') as f:
             dataset_sub = [line.strip() for line in f]
         with open(f'{folder_path_mol}/{name}.pkl', 'rb') as f:
             dataset_sub_mol = pickle.load(f)
-
         return dataset_sub, dataset_sub_mol
 
+    # Print error message if the subsets do not exist
     except FileNotFoundError:
         print(f'No subsets found for retro_reac: {retro_reac} in dataset version: {dataset_version}')
         return [], []
+    
+    except EOFError:
+        print(f'Pickle load ran out of input at retro_reac: {retro_reac} in dataset version: {dataset_version}')
+        return [], []
+
+def apply_rxn_template_on_mols_list(dataset_mol:list, rxn_template:str) -> list:
+    '''
+    Applies a reaction template (rxn_template) on a list of Chem.Mol products (dataset_mol) and returns a list of lists of the corresponding reactants 
+
+    --Inputs--
+    dataset_mol (list(Chem.Mol)):   list of molecules mols 
+    rxn_template (str):             reaction template in SMART format
+    
+    --Returns--
+    list of lists of reactants
+    '''
+    # Convert str template to reaction object
+    rxn = AllChem.ReactionFromSmarts(rxn_template)
+
+    # Apply reaction object on the product molecules from dataset_mol to obtain the reactants
+    return [rxn.RunReactants((dataset_mol[i],)) for i in range(len(dataset_mol))]
+
+
+def canonicalize(smiles: str) -> str:
+    '''
+    Converts a smile string into a rdkit canonicalized smile string
+
+    --Inputs--
+    smiles (str):   smile string to canonicalize
+
+    --Returns--
+    (str) canonicalized smile string
+    '''
+    return singlestepretrosynthesis.canonicalize_smiles(smiles)
+
+
+def format_reaction(reactants_tuple: tuple, smi : str) -> list:
+    '''Formats canonical reactions as reactants>>product in a smiles format where reactants come from reactants_tuple and the product is smi.
+
+    --Inputs--
+    reactants_tuple (tuple(Chem.Mol)):    tuple of reactants Chem.Mol objects resulting from applying a reaction template on a molecule Chem.Mol object
+    smi (str):                            product smiles string
+
+    --Returns--
+    (list) list of canonicalized reactions in a smiles format
+    '''
+    # Create a list that will contain the different possible reactions for the given product
+    reactants_smiles_list = []
+
+    # Iterate over the different possible reactants combinations for the given product
+    for i in range(len(reactants_tuple)):
+        reactants_mol = list(reactants_tuple[i])
+        reactants_smiles = ''
+
+        # Iterate over the several reactants for a single template application
+        for j in range(len(reactants_mol)):
+
+            # Append the reactants in a converted smiles format to the reactants_smiles string
+            reactants_smiles += Chem.MolToSmiles(reactants_mol[j]) + '.'
+
+        # Remove the last dot and append to the list containing all the different possible reactions
+        reactants_smiles = reactants_smiles[:-1]
+        reactants_smiles_list.append(reactants_smiles)
+    
+    # Remove duplicates
+    reactants_smiles_list = list(set(reactants_smiles_list))
+
+    # Canonicalize the reactants smiles
+    rxn = [canonicalize(reactants_smiles_list[i]) + '>>' + smi for i in range(len(reactants_smiles_list))]
+    
+    return rxn
 
 
 def save_rxns(rxns_list, retro_reac, retro_template, dataset_version: str = '', template_hash_version: str = '', dataset_name: str = ''):
@@ -50,10 +130,11 @@ def save_rxns(rxns_list, retro_reac, retro_template, dataset_version: str = '', 
 
     if rxns_list:
         folder_path     = f'./results/created_rxns/{dataset_name}'
+        name           = f'{dataset_name}_sub_{dataset_version}_{template_hash_version}'
 
-        #template_version= f"{retro_reac}".replace('/', 'slash')
-        #name            = f'{dataset_name}_sub_{dataset_version}_{template_version}'
-        name           = f'{dataset_name}_sub_{dataset_version}_{template_hash_version}' #new -------------
+        temp_path       = f'./results/temp_files/{dataset_name}_temp'
+        temp_name       = f'{dataset_name}_temp_{template_hash_version}'
+        temp_list       = []
 
         #Create the folder if it does not exist
         if not os.path.exists(folder_path):
@@ -62,54 +143,30 @@ def save_rxns(rxns_list, retro_reac, retro_template, dataset_version: str = '', 
         with open(f'{folder_path}/{name}.txt', 'w') as f:
             for item in rxns_list:
                 f.write(item + '\n')
+
+            temp_list.append(f'{folder_path}/{name}.txt')
+
+        #Save the paths of saved subsets to a temp file to delete them once they are no longer needed
+        # 1. Create the folder if it does not exist
+        if not os.path.exists(temp_path):
+            os.makedirs(temp_path)
+               
+        # 2. Create the temp file for the given dataset_name, and template_hash_version
+        if not os.path.exists(f'{temp_path}/{temp_name}.txt'):
+            with open(f'{temp_path}/{temp_name}.txt', 'w') as f:
+                for item in temp_list:
+                    f.write(item + '\n')
+        else:
+            with open(f'{temp_path}/{temp_name}.txt', 'a') as f:
+                for item in temp_list:
+                    f.write(item + '\n')
+    
         print(f'Created {len(rxns_list)} reactions for retro_reac: {retro_reac} and retro_template: {retro_template}')
-
-
-def apply_rxn_template_on_mols_list(dataset_mol:list, rxn_template:str):
-    '''
-    Applies a reaction template on a list of mols (dataset) and returns a list of lists of reactants
-
-    dataset: list of molecules mols 
-    rxn_template: reaction template in string format
-    ---
-    returns: list of lists of reactants
-    '''
-    rxn = AllChem.ReactionFromSmarts(rxn_template)
-
-    return [rxn.RunReactants((dataset_mol[i],)) for i in range(len(dataset_mol))]
-
-
-def canonicalize(smiles :str):
-    '''
-    Converts a smile string into a rdkit canonicalized smile string
-    '''
-    return singlestepretrosynthesis.canonicalize_smiles(smiles)
-
-
-def format_reaction(reactants_tuple: tuple, smi : str):
-    '''From the runreactants result, returns the reactions in a smiles format'''
-
-    reactants_smiles_list = []
-    for i in range(len(reactants_tuple)):
-        reactants_mol = list(reactants_tuple[i])
-
-        reactants_smiles = ''
-
-        for j in range(len(reactants_mol)):
-            reactants_smiles += Chem.MolToSmiles(reactants_mol[j]) + '.'
-        reactants_smiles = reactants_smiles[:-1]
-        reactants_smiles_list.append(reactants_smiles)
-    
-    reactants_smiles_list = list(set(reactants_smiles_list))
-    rxn = [canonicalize(reactants_smiles_list[i]) + '>>' + smi for i in range(len(reactants_smiles_list))]
-    
-    return rxn
 
 
 def process_retro_template(retro_reac, retro_template, dataset_version: str = '', template_hash_version: str = '', dataset_name: str = ''):
     
-    #dataset_sub, dataset_sub_mol = load_subsets(retro_reac, dataset_version, template_version, dataset_name)
-    dataset_sub, dataset_sub_mol = load_subsets(retro_reac, dataset_version, template_hash_version, dataset_name) #new -------------
+    dataset_sub, dataset_sub_mol = load_subsets(retro_reac, dataset_version, template_hash_version, dataset_name)
     
     if not dataset_sub:
         return
@@ -131,9 +188,7 @@ def process_retro_template(retro_reac, retro_template, dataset_version: str = ''
         pass
 
     # Save in a txt file
-    
-    #save_rxns(fictive_rxns_list, retro_reac, retro_template, dataset_version, template_version, dataset_name)
-    save_rxns(fictive_rxns_list, retro_reac, retro_template, dataset_version, template_hash_version, dataset_name) #new -------------
+    save_rxns(fictive_rxns_list, retro_reac, retro_template, dataset_version, template_hash_version, dataset_name)
 
 
 def read_config(config_file):

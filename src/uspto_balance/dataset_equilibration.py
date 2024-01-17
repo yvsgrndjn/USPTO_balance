@@ -5,6 +5,7 @@ import argparse
 import sys
 import shutil
 import pandas as pd
+import random
 
 #module imports
 from uspto_balance.C_part1_framework import main as c_part1_framework
@@ -36,16 +37,16 @@ def extract_subset_from_dataset(dataset_name, dataset_version, retro_reac, retro
 
     #check if part 1 needs to be run or not
     folder_path = f'./results/datasets/{dataset_name}'
-    
-    #name        = f'{dataset_name}_sub_{dataset_version}_{template_version}'
     name        = f'{dataset_name}_sub_{dataset_version}_{template_hash_version}' #new-------
+
+    temp_path       = f'./results/temp_files/{dataset_name}_temp'
+    temp_name       = f'{dataset_name}_temp_{template_hash_version}'
+    temp_list       = []
 
     #only run part 1 if the subset does not exist yet
     if not os.path.exists(f'{folder_path}/{name}.txt'):
 
         #replace the ';' characters in the config file name to avoid errors
-        
-        #config_file_path = f'./config_files/config_part1_{dataset_name}_{template_version}.yaml'.replace(';','')
         config_file_path = f'./config_files/config_part1_{dataset_name}_{template_hash_version}.yaml'.replace(';','') #new-------
 
         #create config file for part 1
@@ -59,6 +60,21 @@ def extract_subset_from_dataset(dataset_name, dataset_version, retro_reac, retro
             f.write(f'retro_reac: \'{retro_reac}\'\n')
             f.write(f'retro_template: \'{retro_template}\'\n')
 
+        temp_list.append(f'{config_file_path}')
+        
+        #Save the paths of saved subsets to a temp file to delete them once they are no longer needed
+        # 1. Create the folder if it does not exist
+        if not os.path.exists(temp_path):
+            os.makedirs(temp_path)    
+        # 2. Create the temp file for the given dataset_name, and template_hash_version
+        if not os.path.exists(f'{temp_path}/{temp_name}.txt'):
+            with open(f'{temp_path}/{temp_name}.txt', 'w') as f:
+                for item in temp_list:
+                    f.write(item + '\n')
+        else:
+            with open(f'{temp_path}/{temp_name}.txt', 'a') as f:
+                for item in temp_list:
+                    f.write(item + '\n')
         # run part 1
         with open(f'{config_file_path}', 'r') as f:
             config1 = yaml.safe_load(f)
@@ -67,8 +83,7 @@ def extract_subset_from_dataset(dataset_name, dataset_version, retro_reac, retro
             config1['dataset_name'],
             config1['dataset_path'],
             config1['dataset_version'],
-            #config1['template_version'],
-            config1['template_hash_version'], #new-------
+            config1['template_hash_version'],
             config1['retro_reac'],
             config1['retro_template']
             )
@@ -77,29 +92,39 @@ def extract_subset_from_dataset(dataset_name, dataset_version, retro_reac, retro
 def create_reactions_using_template(dataset_name, dataset_version, retro_reac, retro_template, template_hash, template_line, path_to_folder):
     print('In create_reactions_using_template')
 
-    #initialize config variables
-    #template_version           = f"{retro_reac}".replace('/', 'slash')
-    template_hash_version      = f"{template_hash}_{template_line}" #new-------
+    template_hash_version      = f"{template_hash}_{template_line}"
+
+    temp_path       = f'./results/temp_files/{dataset_name}_temp'
+    temp_name       = f'{dataset_name}_temp_{template_hash_version}'
+    temp_list       = []
 
     #replace the ';' characters in the config file name to avoid errors
     
-    #config_file_path2 = f'{path_to_folder}config_files/config_part2_{dataset_name}_{template_version}.yaml'.replace(';','')
     config_file_path2 = f'{path_to_folder}config_files/config_part2_{dataset_name}_{template_hash_version}.yaml'.replace(';','') #new-------
 
     #create config file for part 2
     with open(f'{config_file_path2}', 'w') as f:
-        #f.write(f'dataset_name: "{dataset_name}"\n')
-        #f.write(f'dataset_version: "{dataset_version}"\n')
-        #f.write(f'template_version: "{template_version}"\n')
-        #f.write(f'retro_reac: "{retro_reac}"\n')
-        #f.write(f'retro_template: "{retro_template}"\n')
         f.write(f'dataset_name: \'{dataset_name}\'\n')
         f.write(f'dataset_version: \'{dataset_version}\'\n')
-        #f.write(f'template_version: \'{template_version}\'\n')
-        f.write(f'template_hash_version: \'{template_hash_version}\'\n') #new-------
+        f.write(f'template_hash_version: \'{template_hash_version}\'\n')
         f.write(f'retro_reac: \'{retro_reac}\'\n')
         f.write(f'retro_template: \'{retro_template}\'\n')
 
+    temp_list.append(f'{config_file_path2}')
+
+    #Save the paths of saved subsets to a temp file to delete them once they are no longer needed
+    # 1. Create the folder if it does not exist
+    if not os.path.exists(temp_path):
+        os.makedirs(temp_path)    
+    # 2. Create the temp file for the given dataset_name, and template_hash_version
+    if not os.path.exists(f'{temp_path}/{temp_name}.txt'):
+        with open(f'{temp_path}/{temp_name}.txt', 'w') as f:
+            for item in temp_list:
+                f.write(item + '\n')
+    else:
+        with open(f'{temp_path}/{temp_name}.txt', 'a') as f:
+            for item in temp_list:
+                f.write(item + '\n')
 
     # run part 2
     with open(f'{config_file_path2}', 'r') as f:
@@ -108,8 +133,7 @@ def create_reactions_using_template(dataset_name, dataset_version, retro_reac, r
     d_part2_framework(
         config2['dataset_name'],
         config2['dataset_version'],
-        #config2['template_version'],
-        config2['template_hash_version'], #new-------
+        config2['template_hash_version'],
         config2['retro_reac'],
         config2['retro_template']
     )
@@ -119,31 +143,40 @@ def validate_created_reactions(dataset_name, dataset_version, retro_reac, retro_
     print('In validate_created_reactions')
     #initialize config variables
 
-    #template_version           = f"{retro_reac}".replace('/', 'slash')
-    template_hash_version      = f"{template_hash}_{template_line}" #new-------
+    template_hash_version      = f"{template_hash}_{template_line}"
     Model_path_T2              = f"{path_models}USPTO_STEREO_separated_T2_Reagent_Pred_225000.pt"
     Model_path_T3              = f"{path_models}T3_Fwd_Tag_model_step_300000.pt"
-       
-    #config_file_path3 = f'{path_to_folder}config_files/config_part3_{dataset_name}_{template_version}.yaml'.replace(';','')
+    
+    temp_path       = f'./results/temp_files/{dataset_name}_temp'
+    temp_name       = f'{dataset_name}_temp_{template_hash_version}'
+    temp_list       = []
+
     config_file_path3 = f'{path_to_folder}config_files/config_part3_{dataset_name}_{template_hash_version}.yaml'.replace(';','')
 
     #create config file for part 3
     with open(f'{config_file_path3}', 'w') as f:
-        #f.write(f'dataset_name: "{dataset_name}"\n')
-        #f.write(f'dataset_version: "{dataset_version}"\n')
-        #f.write(f'template_version: "{template_version}"\n')
-        #f.write(f'retro_reac: "{retro_reac}"\n')
-        #f.write(f'retro_template: "{retro_template}"\n')
-        #f.write(f'Model_path_T2: {Model_path_T2}\n')
-        #f.write(f'Model_path_T3: {Model_path_T3}')
         f.write(f'dataset_name: \'{dataset_name}\'\n')
         f.write(f'dataset_version: \'{dataset_version}\'\n')
-        #f.write(f'template_version: \'{template_version}\'\n')
         f.write(f'template_hash_version: \'{template_hash_version}\'\n')
         f.write(f'retro_reac: \'{retro_reac}\'\n')
         f.write(f'retro_template: \'{retro_template}\'\n')
         f.write(f'Model_path_T2: {Model_path_T2}\n')
         f.write(f'Model_path_T3: {Model_path_T3}')
+
+    temp_list.append(f'{config_file_path3}')
+    #Save the paths of saved subsets to a temp file to delete them once they are no longer needed
+    # 1. Create the folder if it does not exist
+    if not os.path.exists(temp_path):
+        os.makedirs(temp_path)    
+    # 2. Create the temp file for the given dataset_name, and template_hash_version
+    if not os.path.exists(f'{temp_path}/{temp_name}.txt'):
+        with open(f'{temp_path}/{temp_name}.txt', 'w') as f:
+            for item in temp_list:
+                f.write(item + '\n')
+    else:
+        with open(f'{temp_path}/{temp_name}.txt', 'a') as f:
+            for item in temp_list:
+                f.write(item + '\n')
 
     # run part 3
     with open(f'{config_file_path3}', 'r') as f:
@@ -152,8 +185,7 @@ def validate_created_reactions(dataset_name, dataset_version, retro_reac, retro_
     e_part3_framework(
         config3['dataset_name'],
         config3['dataset_version'],
-        #config3['template_version'],
-        config3['template_hash_version'], #new-------
+        config3['template_hash_version'],
         config3['retro_reac'],
         config3['retro_template'],
         config3['Model_path_T2'],
@@ -191,7 +223,6 @@ def delete_dataset_subsets(dataset_name, dataset_version, template_hash_version,
     '''
     folder_path     = f'./results/datasets/{dataset_name}'
     folder_path_mol = f'./results/datasets/{dataset_name}_mol'
-    #name            = f'{dataset_name}_sub_{dataset_version}_{retro_reac}'
     name            = f'{dataset_name}_sub_{dataset_version}_{template_hash_version}'
     os.remove(f'{folder_path}/{name}.txt')
     os.remove(f'{folder_path_mol}/{name}.pkl')
@@ -213,39 +244,50 @@ def delete_all_files_from_folder(path, dataset_name):
                 print('Failed to delete %s. Reason: %s' % (file_path, e))
 
 
-def append_saved_rxns_until_enrichment_target(dataset_name, dataset_version, retro_reac, retro_template, template_hash, template_line, template_frequency, frequency_target: int = 10000):
-    print('In append_saved_rxns_until_enrichment_target')
+#def append_saved_rxns_until_enrichment_target(dataset_name, dataset_version, retro_reac, retro_template, template_hash, template_line, template_frequency, frequency_target: int = 10000):
+#    print('In append_saved_rxns_until_enrichment_target')
+#
+#    retro_reac      = retro_reac.replace('/', 'slash')
+#    retro_template  = retro_template.replace('/', 'slash')
+#    folder_path     = f'./results/saved_rxns/{dataset_name}'
+#    template_hash_version      = f"{template_hash}_{template_line}"
+#    name            = f'{dataset_name}_sub_{dataset_version}_{template_hash_version}'
+#    name_to_save    = f'{dataset_name}_{template_hash_version}'
+#
+#    if os.path.exists(f'{folder_path}/{name}.txt'):
+#        saved_rxns = get_txt_file(f'{folder_path}/{name}.txt')
+#        template_frequency += len(saved_rxns)
+#
+#        if template_frequency < frequency_target:
+#            append_list_to_file(f'{folder_path}/full_{name_to_save}.txt', saved_rxns)
+#            
+#        else:
+#            how_many_to_append = frequency_target - (template_frequency - len(saved_rxns))
+#            append_n_elements_to_file(f'{folder_path}/full_{name_to_save}.txt', saved_rxns, how_many_to_append)
+#            template_frequency = template_frequency - len(saved_rxns) + how_many_to_append
+#
+#    else:
+#        print(f'No reactions found under: {folder_path}/{name}.txt (append_saved_rxns_until_enrichment_target)')
+#
+#    #remove the created subsets to avoid using memory space
+#    if os.path.exists(f'{folder_path}/{name}.txt'):
+#        delete_dataset_subsets(dataset_name, dataset_version, template_hash_version, folder_path)
+#
+#    return template_frequency
 
-    retro_reac      = retro_reac.replace('/', 'slash')
-    retro_template  = retro_template.replace('/', 'slash')
-    folder_path     = f'./results/saved_rxns/{dataset_name}'
-    #name           = f'{dataset_name}_sub_{dataset_version}_{retro_reac}'
-    template_hash_version      = f"{template_hash}_{template_line}" #new-------
-    name            = f'{dataset_name}_sub_{dataset_version}_{template_hash_version}'
-    #name_to_save    = f'{dataset_name}_{retro_reac}_{retro_template}'
-    name_to_save    = f'{dataset_name}_{template_hash_version}'
 
-    if os.path.exists(f'{folder_path}/{name}.txt'):
-        saved_rxns = get_txt_file(f'{folder_path}/{name}.txt')
-        template_frequency += len(saved_rxns)
-
-        if template_frequency < frequency_target:
-            append_list_to_file(f'{folder_path}/full_{name_to_save}.txt', saved_rxns)
-            
+def delete_all_files_from_list(list_of_paths):
+    for file_path in list_of_paths:
+        if 'full' in file_path:
+            continue
         else:
-            how_many_to_append = frequency_target - (template_frequency - len(saved_rxns))
-            append_n_elements_to_file(f'{folder_path}/full_{name_to_save}.txt', saved_rxns, how_many_to_append)
-            template_frequency = template_frequency - len(saved_rxns) + how_many_to_append
-
-    else:
-        print(f'No reactions found under: {folder_path}/{name}.txt (append_saved_rxns_until_enrichment_target)')
-
-    #remove the created subsets to avoid using memory space
-    if os.path.exists(f'{folder_path}/{name}.txt'):
-        #delete_dataset_subsets(dataset_name, dataset_version, retro_reac, folder_path)
-        delete_dataset_subsets(dataset_name, dataset_version, template_hash_version, folder_path)
-
-    return template_frequency
+            try:
+                if os.path.isfile(file_path) or os.path.islink(file_path):
+                    os.unlink(file_path)
+                elif os.path.isdir(file_path):
+                    shutil.rmtree(file_path)
+            except Exception as e:
+                print('Failed to delete %s. Reason: %s' % (file_path, e))
 
 
 def append_saved_rxns_until_enrichment_target_pkl(dataset_name, dataset_version, retro_reac, retro_template, template_hash, template_line, template_frequency, frequency_target: int = 10000):
@@ -258,8 +300,10 @@ def append_saved_rxns_until_enrichment_target_pkl(dataset_name, dataset_version,
     name            = f'{dataset_name}_sub_{dataset_version}_{template_hash_version}'
     name_to_save    = f'{dataset_name}_{template_hash_version}'
 
+    temp_path       = f'./results/temp_files/{dataset_name}_temp'
+    temp_name       = f'{dataset_name}_temp_{template_hash_version}'
+
     if os.path.exists(f'{folder_path}/{name}.csv'):
-        #saved_rxns = get_txt_file(f'{folder_path}/{name}.txt')
         df_saved_rxns = pd.read_csv(f'{folder_path}/{name}.csv')
         numel_conf = sum(i > 0.95 for i in df_saved_rxns['conf_scores'].values.tolist())
         template_frequency += numel_conf
@@ -269,46 +313,94 @@ def append_saved_rxns_until_enrichment_target_pkl(dataset_name, dataset_version,
 
     else:
         print(f'No reactions found under: {folder_path}/{name}.csv (append_saved_rxns_until_enrichment_target)')
+        num_added_rxns = 0
 
-    #remove the created subsets to avoid using memory space
-    if os.path.exists(f'{folder_path}/{name}.csv'):
-        delete_dataset_subsets(dataset_name, dataset_version, template_hash_version, folder_path)
+    #part that we will try to replace by temp files
+    ###remove the created subsets to avoid using memory space
+    ##if os.path.exists(f'{folder_path}/{name}.csv'):
+    ##    delete_dataset_subsets(dataset_name, dataset_version, template_hash_version, folder_path)
+        
+    if os.path.exists(f'{temp_path}/{temp_name}.txt'):
+        list_of_paths = get_txt_file(f'{temp_path}/{temp_name}.txt')
+
+        try:
+            delete_all_files_from_list(list_of_paths)
+            os.remove(f'{temp_path}/{temp_name}.txt')
+        except:
+            print('Could not delete all files from list')
 
     return template_frequency, num_added_rxns
 
 
+def add_dataset_fraction_to_csv(dataset_name, dataset_version, template_hash, template_line, retro_reac, retro_template):
+    retro_reac                 = retro_reac.replace('/', 'slash')
+    retro_template             = retro_template.replace('/', 'slash')
+    folder_path                = f'./results/saved_rxns/{dataset_name}'
+    template_hash_version      = f"{template_hash}_{template_line}"
+    name_to_save               = f'{dataset_name}_{template_hash_version}'
+
+    path_to_csv = f'{folder_path}/full_{name_to_save}.csv'
+
+    counter = dataset_version + 1
+    data = [[counter, None]]
+    df_to_append = pd.DataFrame(data, columns = ['rxns', 'conf_scores'])
+
+    df_to_append.to_csv(path_to_csv, mode='a', header=not os.path.exists(path_to_csv), index = False)
+
+
 # main definition    -------
+
 def main(dataset_name, retro_reac, retro_template, template_hash, template_line, path_to_folder, path_models, template_frequency, frequency_target: int = 10000):
     print('In main')
     counter = 1
     num_added_rxns = 0
     num_added_rxns_before = 0
+    #Initializing random seed to shuffle the order of the uspto iteration
+    index_list = list(range(1, 1001)) #new--
+    random.seed(template_line) #new---------
+    random.shuffle(index_list) #new---------
 
     initial_template_frequency = template_frequency
 
-    while template_frequency < frequency_target and counter <= 100:
+    #while template_frequency < frequency_target and counter <= 100:
+    while template_frequency < frequency_target and counter <= 1000: #new-------
         print(f'Iteration {counter}')
+
+        #Keep track of the number of reactions and template frequency evolution
         template_frequency_before = template_frequency
         num_added_rxns_before += num_added_rxns
-        extract_subset_from_dataset(dataset_name, counter, retro_reac, retro_template, template_hash, template_line, path_to_folder)
-        create_reactions_using_template(dataset_name, counter, retro_reac, retro_template, template_hash, template_line, path_to_folder)
-        validate_created_reactions(dataset_name, counter, retro_reac, retro_template, template_hash, template_line, path_to_folder, path_models)
-        #template_frequency = append_saved_rxns_until_enrichment_target(dataset_name, counter, retro_reac, retro_template, template_hash, template_line, template_frequency, frequency_target)
-        template_frequency, num_added_rxns = append_saved_rxns_until_enrichment_target_pkl(dataset_name, counter, retro_reac, retro_template, template_hash, template_line, template_frequency, frequency_target)
-        counter += 1
 
+        # Define the dataset version
+        dataset_version = index_list[counter-1] #new-------
+
+        # Run the enrichment on the decided dataset version
+
+        #extract_subset_from_dataset(dataset_name, counter, retro_reac, retro_template, template_hash, template_line, path_to_folder)
+        extract_subset_from_dataset(dataset_name, dataset_version, retro_reac, retro_template, template_hash, template_line, path_to_folder) #new-------
+        #create_reactions_using_template(dataset_name, counter, retro_reac, retro_template, template_hash, template_line, path_to_folder)
+        create_reactions_using_template(dataset_name, dataset_version, retro_reac, retro_template, template_hash, template_line, path_to_folder) #new-------
+        #validate_created_reactions(dataset_name, counter, retro_reac, retro_template, template_hash, template_line, path_to_folder, path_models)
+        validate_created_reactions(dataset_name, dataset_version, retro_reac, retro_template, template_hash, template_line, path_to_folder, path_models) #new-------
+        #template_frequency, num_added_rxns = append_saved_rxns_until_enrichment_target_pkl(dataset_name, counter, retro_reac, retro_template, template_hash, template_line, template_frequency, frequency_target)
+        template_frequency, num_added_rxns = append_saved_rxns_until_enrichment_target_pkl(dataset_name, dataset_version, retro_reac, retro_template, template_hash, template_line, template_frequency, frequency_target)
+        
+        counter += 1
         added_reactions = template_frequency - template_frequency_before
         print(f'Validated {num_added_rxns} reactions out of which {added_reactions} are confident > 0.95,  reactions added to the actual total {num_added_rxns_before} (total of validated and confident reactions = {template_frequency} / {frequency_target})for retro_reac: {retro_reac} and retro_template: {retro_template}')
 
+    #append counter information to results csv
+    add_dataset_fraction_to_csv(dataset_name, dataset_version, template_hash, template_line, retro_reac, retro_template)
+
     print(f'Enrichment finished (with counter = {counter}):  initial {initial_template_frequency} reactions were enriched to {template_frequency} for retro_reac: {retro_reac} and retro_template: {retro_template}')
     
-    print('Delete remaining files...')
-    delete_all_files_from_folder(f'./results/datasets', dataset_name)
-    delete_all_files_from_folder(f'./results/datasets', f'{dataset_name}_mol')
-    delete_all_files_from_folder(f'./results/created_rxns', dataset_name)
-    delete_all_files_from_folder(f'./results/saved_rxns', dataset_name)
-    delete_all_files_from_folder('./config_files', '')
-    print('Done')
+    #part that we will try to replace by temp files
+    #print('Delete remaining files...')
+    #delete_all_files_from_folder(f'./results/datasets', dataset_name)          should not be needed with delete_dataset_subsets()
+    #delete_all_files_from_folder(f'./results/datasets', f'{dataset_name}_mol') should not be needed with delete_dataset_subsets()
+    #delete_all_files_from_folder(f'./results/created_rxns', dataset_name)
+    #delete_all_files_from_folder(f'./results/saved_rxns', dataset_name)
+    #delete_all_files_from_folder('./config_files', '')
+    #print('Done')
 
 def main_balance():
     print('In main_balance')

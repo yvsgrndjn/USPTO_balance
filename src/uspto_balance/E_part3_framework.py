@@ -165,17 +165,18 @@ def save_conf_rxns(rxns_conf, dataset_name, dataset_version, template_hash_versi
     print(f'Validated and saved {len(rxns_conf)} reactions for retro_reac: {retro_reac} and retro_template: {retro_template}')
 
 
-def save_rxns_and_conf_to_pkl(rxns_val, conf_scores, dataset_name, dataset_version, template_hash_version, retro_reac, retro_template):
+def save_rxns_and_conf_to_csv(rxns_val, conf_scores, dataset_name, dataset_version, template_hash_version, retro_reac, retro_template):
     '''
     V2-second element (modified from save_conf_xns)
     '''
     retro_template = retro_template.replace('/', 'slash')
 
     folder_path     = f'./results/saved_rxns/{dataset_name}'
+    name =        f'{dataset_name}_sub_{dataset_version}_{template_hash_version}'
 
-    #template_version= f"{retro_reac}".replace('/', 'slash')
-    #name =          f'{dataset_name}_sub_{dataset_version}_{template_version}'
-    name =        f'{dataset_name}_sub_{dataset_version}_{template_hash_version}' #new -------------
+    temp_path       = f'./results/temp_files/{dataset_name}_temp'
+    temp_name       = f'{dataset_name}_temp_{template_hash_version}'
+    temp_list       = []
 
     if not os.path.exists(folder_path):
         os.makedirs(folder_path)
@@ -184,9 +185,23 @@ def save_rxns_and_conf_to_pkl(rxns_val, conf_scores, dataset_name, dataset_versi
     df = pd.DataFrame({'rxns': rxns_val, 'conf_scores': conf_scores})
     df.to_csv(f'{folder_path}/{name}.csv', index=False)
 
-    #with open(f'{folder_path}/{name}.txt', 'w') as f:
-    #    for item in rxns_conf:
-    #        f.write(item + '\n')
+    temp_list.append(f'{folder_path}/{name}.csv')
+
+    #Save the paths of saved subsets to a temp file to delete them once they are no longer needed
+    # 1. Create the folder if it does not exist
+    if not os.path.exists(temp_path):
+        os.makedirs(temp_path)
+               
+    # 2. Create the temp file for the given dataset_name, and template_hash_version
+    if not os.path.exists(f'{temp_path}/{temp_name}.txt'):
+        with open(f'{temp_path}/{temp_name}.txt', 'w') as f:
+            for item in temp_list:
+                f.write(item + '\n')
+    else:
+        with open(f'{temp_path}/{temp_name}.txt', 'a') as f:
+            for item in temp_list:
+                f.write(item + '\n')
+
 
     print(f'Validated and saved {len(rxns_val)} reactions for retro_reac: {retro_reac} and retro_template: {retro_template}')
 
@@ -197,9 +212,7 @@ def delete_evaluated_rxns(dataset_name, dataset_version, template_hash_version, 
     retro_template = retro_template.replace('/', 'slash')
     folder_path     = f'./results/created_rxns/{dataset_name}'
     
-    #template_version= f"{retro_reac}".replace('/', 'slash')
-    #name =          f'{dataset_name}_sub_{dataset_version}_{template_version}'
-    name =        f'{dataset_name}_sub_{dataset_version}_{template_hash_version}' #new -------------
+    name =        f'{dataset_name}_sub_{dataset_version}_{template_hash_version}'
 
     os.remove(f'{folder_path}/{name}.txt')
 
@@ -230,9 +243,10 @@ def reactions_conf_validation(dataset_name, dataset_version, template_hash_versi
     #rxns_val, conf_scores = keeps_val_rxns_and_scores(rxns_list, probs_T3, ind_match) (2)
     rxns_val, conf_scores = keeps_val_rxns_and_scores(rxns_list_with_reagents, probs_T3, ind_match) #new (3)
     #save_conf_rxns(rxns_conf, dataset_name, dataset_version, template_hash_version, retro_reac, retro_template)
-    save_rxns_and_conf_to_pkl(rxns_val, conf_scores, dataset_name, dataset_version, template_hash_version, retro_reac, retro_template)
-
-    delete_evaluated_rxns(dataset_name, dataset_version, template_hash_version, retro_reac, retro_template)
+    save_rxns_and_conf_to_csv(rxns_val, conf_scores, dataset_name, dataset_version, template_hash_version, retro_reac, retro_template)
+    
+    #part that we will try to replace by temp files
+    #delete_evaluated_rxns(dataset_name, dataset_version, template_hash_version, retro_reac, retro_template)
 
 
 def main(dataset_name, dataset_version, template_hash_version, retro_reac, retro_template, Model_path_T2, Model_path_T3):
