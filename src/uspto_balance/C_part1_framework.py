@@ -100,6 +100,33 @@ def extract_match_smiles_from_dataset(dataset:list, dataset_mol:list, template:s
     return dataset_sub, dataset_sub_mol
 
 
+def save_created_files_to_temp_file(temp_path: str, temp_name: str, temp_list: list):
+    '''
+    Saves the paths of the created files in a temp file to delete them once they are no longer needed at the end of the dataset_version iteration
+
+    --Inputs--
+    temp_path (str):    path to the temp folder
+    temp_name (str):    name of the temp file
+    temp_list (list):   list of paths to the created files
+
+    --Returns--
+    None, but creates a txt file containing the paths of the created files that will be deleted at the end of the dataset_version iteration
+    '''
+    # Create the folder if it does not exist
+    if not os.path.exists(temp_path):
+        os.makedirs(temp_path)
+               
+    # Create the temp file for the given dataset_name, and template_hash_version
+    if not os.path.exists(f'{temp_path}/{temp_name}.txt'):
+        with open(f'{temp_path}/{temp_name}.txt', 'w') as f:
+            for item in temp_list:
+                f.write(item + '\n')
+    else:
+        with open(f'{temp_path}/{temp_name}.txt', 'a') as f:
+            for item in temp_list:
+                f.write(item + '\n')
+
+
 def convert_and_save_subset(subset: list, subset_mol: list, dataset_name:str, retro_reac, dataset_version: str = '', template_hash_version: str = ''): 
     '''
     Saves the SMILES and Chem.mol subsets to a txt and to a pickle file, respectively.
@@ -150,20 +177,7 @@ def convert_and_save_subset(subset: list, subset_mol: list, dataset_name:str, re
             temp_list.append(f'{folder_path_mol}/{name}.pkl')
         
         #Save the paths of saved subsets to a temp file to delete them once they are no longer needed
-        # 1. Create the folder if it does not exist
-        if not os.path.exists(temp_path):
-            os.makedirs(temp_path)
-               
-        # 2. Create the temp file for the given dataset_name, and template_hash_version
-        if not os.path.exists(f'{temp_path}/{temp_name}.txt'):
-            with open(f'{temp_path}/{temp_name}.txt', 'w') as f:
-                for item in temp_list:
-                    f.write(item + '\n')
-        else:
-            with open(f'{temp_path}/{temp_name}.txt', 'a') as f:
-                for item in temp_list:
-                    f.write(item + '\n')
-
+        save_created_files_to_temp_file(temp_path, temp_name, temp_list)
         print(f'Saved subset of {len(subset)} smiles from {dataset_name}_{dataset_version} for retro_reac: {retro_reac}')
 
 
