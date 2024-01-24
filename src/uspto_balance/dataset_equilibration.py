@@ -449,7 +449,7 @@ def main(dataset_name, retro_reac, retro_template, template_hash, template_line,
 
     # Append number of enrichment runs information to the results csv file
     add_dataset_fraction_to_csv(dataset_name, dataset_version, template_hash, template_line, retro_reac, retro_template)
-    print(f'Enrichment finished (with counter = {counter}):  initial {initial_template_frequency} reactions were enriched to {template_frequency} for retro_reac: {retro_reac} and retro_template: {retro_template}')
+    print(f'Enrichment finished (with counter = {counter-1}):  initial {initial_template_frequency} reactions were enriched to {template_frequency} for retro_reac: {retro_reac} and retro_template: {retro_template}')
     
 
 def main_balance():

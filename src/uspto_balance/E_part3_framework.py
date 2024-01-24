@@ -124,15 +124,25 @@ def prepare_rxns_T2_for_T3(rxns_list: list, preds_T2: list):
     rxns_list (list(str)):              List of reactions in the format reactants>>product
     preds_T2 (list(str)):               List of predicted reagents for each reaction in 'rxns_list'
 
-    --Returns--
+    --Returns-- 
     reconstructed_rxns_tok (list(str)): List of tokenized reactions in the format: reactants(tagged with "!") > reagents (tokenized) ready to be input into forward-tag Forward validation (T3-FT)
+    MappedReactions (list(str)):        List of mapped reactions in the format reactants(mapped)>>product(mapped)
     '''
     MappedReactions = list(singlestepretrosynthesis.rxn_mapper_batch.map_reactions(rxns_list))
     MappedReactions, preds_T2, rxns_list = remove_unmapped_rxns(MappedReactions, preds_T2, rxns_list)
-    taggedreactants = [singlestepretrosynthesis.rxn_mark_center.TagMappedReactionCenter(MappedReactions[i], alternative_marking = True, tag_reactants = True).split('>>')[0] for i in range(len(MappedReactions))]
-    reconstructed_rxns = [taggedreactants[i] + '>' + preds_T2[i] for i in range(len(preds_T2))]
+    alt_taggedreactants = [singlestepretrosynthesis.rxn_mark_center.TagMappedReactionCenter(MappedReactions[i], alternative_marking = True, tag_reactants = True).split('>>')[0] for i in range(len(MappedReactions))]
+    #alt_taggedproduct = [singlestepretrosynthesis.rxn_mark_center.TagMappedReactionCenter(MappedReactions[i], alternative_marking = True, tag_reactants = False).split('>>')[1] for i in range(len(MappedReactions))]
+    reconstructed_rxns = [alt_taggedreactants[i] + '>' + preds_T2[i] for i in range(len(preds_T2))]
     reconstructed_rxns_tok = [singlestepretrosynthesis.smi_tokenizer(i) for i in reconstructed_rxns]
-    return reconstructed_rxns_tok
+
+    ## Reconstruct the fully alternatively tagged reactions
+    #alt_TaggedReactions = [alt_taggedreactants[i] + '>>' + alt_taggedproduct[i] for i in range(len(alt_taggedreactants))]
+
+    ## Reconstruct the fully tagged reactions
+    #taggedreactants = [singlestepretrosynthesis.rxn_mark_center.TagMappedReactionCenter(MappedReactions[i], alternative_marking = False, tag_reactants = True).split('>>')[0] for i in range(len(MappedReactions))]
+    #taggedproduct = [singlestepretrosynthesis.rxn_mark_center.TagMappedReactionCenter(MappedReactions[i], alternative_marking = False, tag_reactants = False).split('>>')[1] for i in range(len(MappedReactions))]
+    #TaggedReactions = [taggedreactants[i] + '>>' + taggedproduct[i] for i in range(len(taggedreactants))]
+    return reconstructed_rxns_tok, MappedReactions#, alt_TaggedReactions, TaggedReactions
 
 
 def run_T3_predictions(rxns_T2_to_T3_tok: list, Model_path: str, beam_size: int = 3, batch_size: int = 64, untokenize_output:bool = True):
@@ -182,7 +192,7 @@ def add_reagents_to_rxns_list(rxns_list, preds_T2, ind_match):
     Add reagents to the list of reactions 'rxns_list' that are forward validated (at indices 'ind_match') . Final reaction format: reactant(s)>reagent(s)>product.
 
     --Inputs--
-    rxns_list (list(str)):          List of reactions in the format reactants>>product (not mapped)
+    rxns_list (list(str)):          List of reactions in the format reactants>>product 
     preds_T2 (list(str)):           List of predicted reagents for each reaction in 'rxns_list'
     ind_match (list(int)):          List of indices of the forward validated reactions
 
@@ -238,12 +248,13 @@ def save_created_files_to_temp_file(temp_path: str, temp_name: str, temp_list: l
                 f.write(item + '\n')
 
 
-def save_rxns_and_conf_to_csv(rxns_val: list, conf_scores: list, dataset_name: str, dataset_version: str, template_hash_version: str, retro_reac: str, retro_template: str):
+def save_rxns_and_conf_to_csv(rxns_val: list, MappedReactions: list, conf_scores: list, dataset_name: str, dataset_version: str, template_hash_version: str, retro_reac: str, retro_template: str):
     '''
     Saves the validated reactions and their confidence scores in a csv file.
 
     --Inputs--
     rxns_val (list(str)):           List of forward validated reactions
+    MappedReactions (list(str)):    List of mapped reactions in the format reactants(mapped)>>product(mapped)
     conf_scores (list(float)):      List of confidence scores for each of the forward validated reactions, in [0,1]
     dataset_name (str):             Name of the dataset (str) ex: GDB13S, USPTO. Prerequisite (for the module, not the function):
                                     The dataset divided in 1000 different files in the format {dataset_name}_i.txt for i from 1 to
@@ -266,7 +277,7 @@ def save_rxns_and_conf_to_csv(rxns_val: list, conf_scores: list, dataset_name: s
         os.makedirs(folder_path)
 
     # Create and save a dataframe with the reactions and the confidence scores
-    df = pd.DataFrame({'rxns': rxns_val, 'conf_scores': conf_scores})
+    df = pd.DataFrame({'rxns': rxns_val, 'mapped_rxns': MappedReactions, 'conf_scores': conf_scores})
     df.to_csv(f'{folder_path}/{name}.csv', index=False)
 
     temp_list.append(f'{folder_path}/{name}.csv')
@@ -308,15 +319,16 @@ def reactions_conf_validation(dataset_name: str, dataset_version: str, template_
 
     if not rxns_list:
         return
-    rxns_list = remove_incomplete_rxns(rxns_list)
-    tok_rxns_list = tokenize_rxn_list(rxns_list)
-    preds_T2 = run_T2_predictions(tok_rxns_list, Model_path_T2, beam_size = 1, batch_size = 64, untokenize_output = True)
-    rxns_T2_to_T3_tok = prepare_rxns_T2_for_T3(rxns_list, preds_T2)
-    preds_T3, probs_T3 = run_T3_predictions(rxns_T2_to_T3_tok, Model_path_T3, beam_size = 3, batch_size = 64, untokenize_output = True)
-    ind_match = find_ind_match_T3_preds_ref(preds_T3, rxns_list)
-    rxns_list_with_reagents = add_reagents_to_rxns_list(rxns_list, preds_T2, ind_match)
-    rxns_val, conf_scores = keeps_val_rxns_and_scores(rxns_list_with_reagents, probs_T3, ind_match)
-    save_rxns_and_conf_to_csv(rxns_val, conf_scores, dataset_name, dataset_version, template_hash_version, retro_reac, retro_template)
+    rxns_list                     = remove_incomplete_rxns(rxns_list)
+    tok_rxns_list                 = tokenize_rxn_list(rxns_list)
+    preds_T2                      = run_T2_predictions(tok_rxns_list, Model_path_T2, beam_size = 1, batch_size = 64, untokenize_output = True)
+    rxns_T2_to_T3_tok, MappedReactions  = prepare_rxns_T2_for_T3(rxns_list, preds_T2)
+    preds_T3, probs_T3            = run_T3_predictions(rxns_T2_to_T3_tok, Model_path_T3, beam_size = 3, batch_size = 64, untokenize_output = True)
+    ind_match                     = find_ind_match_T3_preds_ref(preds_T3, rxns_list)
+    rxns_list_with_reagents       = add_reagents_to_rxns_list(rxns_list, preds_T2, ind_match)
+    MappedReactions_with_reagents = add_reagents_to_rxns_list(MappedReactions, preds_T2, ind_match)
+    rxns_val, conf_scores         = keeps_val_rxns_and_scores(rxns_list_with_reagents, probs_T3, ind_match)
+    save_rxns_and_conf_to_csv(rxns_val, MappedReactions_with_reagents, conf_scores, dataset_name, dataset_version, template_hash_version, retro_reac, retro_template)
     
 
 def main(dataset_name: str, dataset_version: str, template_hash_version: str, retro_reac: str, retro_template: str, Model_path_T2: str, Model_path_T3: str):
