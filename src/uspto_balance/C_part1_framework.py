@@ -218,7 +218,7 @@ def main(dataset_name: str, dataset_path: str, dataset_version: str, template_ha
     if do_subsets_exist_already(dataset_name, dataset_version, template_hash_version):
         print(f'The subsets for dataset {dataset_name} and template_hash_version {template_hash_version} already exist')
         pass
-
+        return 0
     else:
         # Load dataset
         with open(dataset_path, 'r') as f:
@@ -238,7 +238,7 @@ def main(dataset_name: str, dataset_path: str, dataset_version: str, template_ha
         # Extract the subset of molecules containing the substructure and save it
         dataset_sub, dataset_sub_mol = extract_match_smiles_from_dataset(dataset=df['smiles'], dataset_mol=df['mol'], template = retro_reac)
         convert_and_save_subset(dataset_sub, dataset_sub_mol, dataset_name, retro_reac, dataset_version, template_hash_version)
-
+        return len(dataset_sub)
 
 if __name__ == '__main__':
     

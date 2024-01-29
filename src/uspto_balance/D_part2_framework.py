@@ -218,7 +218,7 @@ def process_retro_template(retro_reac, retro_template, dataset_version: str = ''
     
     # Abort if no subset is found
     if not dataset_sub:
-        return
+        return 0
 
     # Apply reaction template on the product molecules from datasets
     dataset_sub_app_temp = apply_rxn_template_on_mols_list(dataset_sub_mol, retro_template)
@@ -238,7 +238,7 @@ def process_retro_template(retro_reac, retro_template, dataset_version: str = ''
 
     # Save in a txt file
     save_rxns(fictive_rxns_list, retro_reac, retro_template, dataset_version, template_hash_version, dataset_name)
-
+    return len(fictive_rxns_list)
 
 def read_config(config_file: yaml):
     '''
@@ -251,8 +251,8 @@ def read_config(config_file: yaml):
 
 def main(dataset_name: str, dataset_version: str, template_hash_version: str, retro_reac: str, retro_template: str):
     
-    process_retro_template(retro_reac, retro_template, dataset_version, template_hash_version, dataset_name)
-
+    stat_rxns_number = process_retro_template(retro_reac, retro_template, dataset_version, template_hash_version, dataset_name)
+    return stat_rxns_number
 
 if __name__ == '__main__':
 

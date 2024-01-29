@@ -5,6 +5,8 @@ import sys
 import shutil
 import pandas as pd
 import random
+import time
+import platform
 
 from uspto_balance.C_part1_framework import main as c_part1_framework
 from uspto_balance.D_part2_framework import main as d_part2_framework
@@ -108,7 +110,7 @@ def extract_subset_from_dataset(dataset_name, dataset_version, retro_reac, retro
         with open(f'{config_file_path}', 'r') as f:
             config1 = yaml.safe_load(f)
 
-        c_part1_framework(          
+        num_molecules_matchs = c_part1_framework(          
             config1['dataset_name'],
             config1['dataset_path'],
             config1['dataset_version'],
@@ -116,6 +118,7 @@ def extract_subset_from_dataset(dataset_name, dataset_version, retro_reac, retro
             config1['retro_reac'],
             config1['retro_template']
             )
+        return num_molecules_matchs
 
 
 def create_reactions_using_template(dataset_name: str, dataset_version: str, retro_reac: str, retro_template: str, template_hash: str, template_line: str, path_to_folder: str):
@@ -167,14 +170,14 @@ def create_reactions_using_template(dataset_name: str, dataset_version: str, ret
     with open(f'{config_file_path2}', 'r') as f:
         config2 = yaml.safe_load(f)
     
-    d_part2_framework(
+    num_created_rxns = d_part2_framework(
         config2['dataset_name'],
         config2['dataset_version'],
         config2['template_hash_version'],
         config2['retro_reac'],
         config2['retro_template']
     )
-
+    return num_created_rxns
 
 def validate_created_reactions(dataset_name: str, dataset_version: str, retro_reac: str, retro_template: str, template_hash: str, template_line: str, path_to_folder: str, path_models):
     '''
@@ -348,6 +351,7 @@ def append_saved_rxns_until_enrichment_target_csv(dataset_name: str, dataset_ver
 
     else:
         print(f'No reactions found under: {folder_path}/{name}.csv (append_saved_rxns_until_enrichment_target)')
+        numel_conf = 0
         num_added_rxns = 0
     
     # Delete all temporary files
@@ -358,7 +362,7 @@ def append_saved_rxns_until_enrichment_target_csv(dataset_name: str, dataset_ver
             os.remove(f'{temp_path}/{temp_name}.txt')
         except:
             print('Could not delete all files from list')
-    return template_frequency, num_added_rxns
+    return template_frequency, num_added_rxns, num_added_rxns, numel_conf
 
 
 def add_dataset_fraction_to_csv(dataset_name: str, dataset_version: str, template_hash: str, template_line: str, retro_reac: str, retro_template: str):
@@ -391,6 +395,56 @@ def add_dataset_fraction_to_csv(dataset_name: str, dataset_version: str, templat
     df_to_append.to_csv(path_to_csv, mode='a', header=not os.path.exists(path_to_csv), index = False)
 
 
+def create_enrichment_stats_csv(dataset_name: str,dataset_version: int,  template_hash: str, template_line: str, num_molecules_matchs: int, num_created_rxns: int, num_validated_rxns: int, num_validated_and_confident_rxns: int, time_elapsed: float, cpu_type: str):
+    '''
+    Creates a csv dataframe containing information on the enrichment of the currently enriched template. The dataframe contains the following columns:
+        - template line: line of the retrosynthetic reaction template in the dataframe containing all the templates to be enriched
+        - dataset fractions: number of dataset fractions used for the enrichment
+        - molecules match: number of molecules matching the substructure 'retro_reac' from the dataset
+        - created_rxns: number of reactions created from the template 'retro_template' applied on molecules containing the substructure 'retro_reac'
+        - validated reactions: number of reactions validated by the forward validation model of the TTL
+        - validated and confident reactions: number of reactions validated by the forward validation model of the TTL and with a confidence score above or equal to 0.95
+        - time elapsed: time elapsed for the enrichment of the template
+        - cpu type: type of cpu used for the enrichment
+    
+    --Inputs--
+    dataset_name (str):           name of the dataset (str) ex: GDB13S, USPTO. Prerequisite (for the module, not the function): The dataset is divided in 1000 different parts
+    dataset_version(str(int)):    version of the dataset (str) being any integer from 1 to 1000, which will be here the dataset_version in which the enrichment target was obtained. It will allow to know which proportion of the dataset fractions were needed to reach the enrichment threshold.
+    template_hash (str):          hash of the retrosynthetic reaction template
+    template_line (str(int)):     line of the retrosynthetic reaction template in the dataframe containing all the templates to be enriched
+    num_molecules_matchs (int):   number of molecules matching the substructure 'retro_reac' from the dataset
+    num_created_rxns (int):       number of reactions created from the template 'retro_template' applied on molecules containing the substructure 'retro_reac'
+    num_validated_rxns (int):     number of reactions validated by the forward validation model of the TTL
+    num_validated_and_confident_rxns (int): number of reactions validated by the forward validation model of the TTL and with a confidence score above or equal to 0.95
+    time_elapsed (float):         time elapsed for the enrichment of the template
+    cpu_type (str):               type of cpu used for the enrichment
+
+    --Returns--
+    None, creates a csv dataframe containing information on the enrichment of the currently enriched template
+    '''
+    folder_path                = f'./results/saved_rxns/{dataset_name}'
+    template_hash_version      = f"{template_hash}_{template_line}"
+    name_to_save               = f'{dataset_name}_stats_{template_hash_version}'
+
+    path_to_csv = f'{folder_path}/full_{name_to_save}' 
+
+    index_list = list(range(1, 1001))
+    random.seed(template_line)
+    random.shuffle(index_list)
+    num_final_fraction = index_list.index(dataset_version) + 1 # + 1 to start at 1 instead of 0 
+
+    df = pd.DataFrame({'template line':template_line,
+                       'dataset fractions': [num_final_fraction],
+                       'molecules match': [num_molecules_matchs],
+                       'created_rxns': [num_created_rxns],
+                       'validated reactions': [num_validated_rxns],
+                       'validated and confident reactions': [num_validated_and_confident_rxns],
+                       'time elapsed': [time_elapsed],
+                       'cpu type': cpu_type})
+
+    df.to_csv(f'{path_to_csv}.csv', index=False)
+
+
 def main(dataset_name, retro_reac, retro_template, template_hash, template_line, path_to_folder, path_models, template_frequency, frequency_target: int = 10000):
     '''
     Main function to run the enrichment of a given dataset_name, retro_reac, retro_template, template_hash, and template_line from 'template_frequency' until the desired number of reactions 'frequency_target'
@@ -415,6 +469,9 @@ def main(dataset_name, retro_reac, retro_template, template_hash, template_line,
     --Returns--
     None, but saves the validated reactions under a csv file
     '''
+    # Start timer
+    start = time.time()
+
     print('In main')
     counter = 1
     num_added_rxns = 0
@@ -427,6 +484,12 @@ def main(dataset_name, retro_reac, retro_template, template_hash, template_line,
 
     initial_template_frequency = template_frequency
 
+    # Initialize the enrichment statistics
+    num_molecules_matchs = 0
+    num_created_rxns = 0
+    num_validated_rxns = 0
+    num_validated_and_confident_rxns = 0
+
     while template_frequency < frequency_target and counter <= 1000:
         print(f'Iteration {counter}')
 
@@ -438,17 +501,30 @@ def main(dataset_name, retro_reac, retro_template, template_hash, template_line,
         dataset_version = index_list[counter-1] 
 
         # Run the enrichment on the decided dataset version
-        extract_subset_from_dataset(dataset_name, dataset_version, retro_reac, retro_template, template_hash, template_line, path_to_folder)
-        create_reactions_using_template(dataset_name, dataset_version, retro_reac, retro_template, template_hash, template_line, path_to_folder) 
+        num_molecules_matchs += extract_subset_from_dataset(dataset_name, dataset_version, retro_reac, retro_template, template_hash, template_line, path_to_folder)
+        num_created_rxns     += create_reactions_using_template(dataset_name, dataset_version, retro_reac, retro_template, template_hash, template_line, path_to_folder) 
         validate_created_reactions(dataset_name, dataset_version, retro_reac, retro_template, template_hash, template_line, path_to_folder, path_models) 
-        template_frequency, num_added_rxns = append_saved_rxns_until_enrichment_target_csv(dataset_name, dataset_version, retro_reac, retro_template, template_hash, template_line, template_frequency, frequency_target)
-        
+        template_frequency, num_added_rxns, val_rxns, val_conf_rxns = append_saved_rxns_until_enrichment_target_csv(dataset_name, dataset_version, retro_reac, retro_template, template_hash, template_line, template_frequency, frequency_target)
+        num_validated_rxns += val_rxns
+        num_validated_and_confident_rxns += val_conf_rxns
+
         counter += 1
         added_reactions = template_frequency - template_frequency_before
         print(f'Validated {num_added_rxns} reactions out of which {added_reactions} are confident > 0.95,  reactions added to the actual total {num_added_rxns_before} (total of validated and confident reactions = {template_frequency} / {frequency_target})for retro_reac: {retro_reac} and retro_template: {retro_template}')
 
-    # Append number of enrichment runs information to the results csv file
-    add_dataset_fraction_to_csv(dataset_name, dataset_version, template_hash, template_line, retro_reac, retro_template)
+    # Stop timer
+    end = time.time()
+    time_elapsed = end - start
+
+    # Get cpu information
+    cpu_type = platform.processor()
+
+    if counter == 1:
+        print(f'Reaction frequency threshold already satisfied for retro_reac: {retro_reac} and retro_template: {retro_template}')
+    else:
+        create_enrichment_stats_csv(dataset_name, dataset_version, template_hash, template_line, num_molecules_matchs, num_created_rxns, num_validated_rxns, num_validated_and_confident_rxns, time_elapsed, cpu_type)
+    ## Append number of enrichment runs information to the results csv file
+    #add_dataset_fraction_to_csv(dataset_name, dataset_version, template_hash, template_line, retro_reac, retro_template)
     print(f'Enrichment finished (with counter = {counter-1}):  initial {initial_template_frequency} reactions were enriched to {template_frequency} for retro_reac: {retro_reac} and retro_template: {retro_template}')
     
 
