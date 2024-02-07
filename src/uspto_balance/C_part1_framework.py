@@ -238,7 +238,12 @@ def main(dataset_name: str, dataset_path: str, dataset_version: str, template_ha
         # Extract the subset of molecules containing the substructure and save it
         dataset_sub, dataset_sub_mol = extract_match_smiles_from_dataset(dataset=df['smiles'], dataset_mol=df['mol'], template = retro_reac)
         convert_and_save_subset(dataset_sub, dataset_sub_mol, dataset_name, retro_reac, dataset_version, template_hash_version)
-        return len(dataset_sub)
+        
+        # Return always a int type
+        if type(len(dataset_sub)) == int:
+            return len(dataset_sub)
+        else:
+            return 0
 
 if __name__ == '__main__':
     
