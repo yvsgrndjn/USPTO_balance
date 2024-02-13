@@ -538,7 +538,7 @@ def main_balance():
         print('Please provide a configuration file')
         sys.exit()
     elif not os.path.exists(args.config):
-        print('The configuration file does not exist')
+        print('The configuration file does not exist:', args.config)
         sys.exit()
 
     config = read_config(args.config)
