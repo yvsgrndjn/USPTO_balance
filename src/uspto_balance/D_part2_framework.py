@@ -193,6 +193,65 @@ def save_rxns(rxns_list, retro_reac, retro_template, dataset_version: str = '', 
         print(f'No reactions created for retro_reac: {retro_reac} and retro_template: {retro_template}')
 
 
+def get_txt_file(path_to_file: str):
+    '''
+    Loads a txt file into a list
+
+    --Inputs--
+    path_to_file (str): path to the txt file to be loaded
+
+    --Returns--
+    file (list): list containing the lines of the txt file
+    '''
+    with open(path_to_file, 'r') as f:
+        file = []
+        for line in f:
+            file.append(line.split('\n')[0])
+    return file
+
+
+def keep_new_rxns_and_save_to_rxnpool(dataset_name: str, template_hash_version: str, fictive_rxns_list: list):
+    '''
+    
+    '''
+    # 1. Define where the created reactions pool will be stored
+    folder_path     = f'./results/created_rxns/{dataset_name}'
+    name            = f'{dataset_name}_created_rxns_pool_{template_hash_version}'
+    name_to_save    = f'{folder_path}/{name}.txt'
+
+    # 2. Check folder existence and create it if needed
+    if not os.path.exists(folder_path):
+        os.makedirs(folder_path)
+
+    # 3. Check for existence of the file 
+    try:
+        # 3.1 load the content of the file
+        created_rxns_pool = get_txt_file(name_to_save)
+        
+        # 3.2 find the created reactions that are not in the pool already
+        fictive_rxns_set  = set(fictive_rxns_list)
+        fictive_rxns_set_new  = fictive_rxns_set.difference(created_rxns_pool)
+        fictive_rxns_list_new = list(fictive_rxns_set_new) 
+
+        # 3.3 append the new reactions to the pool
+        with open(name_to_save, 'a') as f:
+            for rxn in fictive_rxns_list_new:
+                f.write(rxn + '\n')
+        
+        # 3.4 return only the new reactions
+        return fictive_rxns_list_new
+
+    # 4. Case in which the file does not exist
+    except: 
+        # 4.1 create the file
+        with open(name_to_save, 'w') as f:
+            for rxn in fictive_rxns_list:
+                f.write(rxn + '\n')
+        
+        # 4.2 return the fictive reactions list
+        return fictive_rxns_list
+
+
 def process_retro_template(retro_reac, retro_template, dataset_version: str = '', template_hash_version: str = '', dataset_name: str = ''):
     '''
     Function creating fictive reactions from a given retrosynthetic reaction template 'retro_template' applied on molecules containing a given substructure 'retro_reac'. 
@@ -235,6 +294,9 @@ def process_retro_template(retro_reac, retro_template, dataset_version: str = ''
         fictive_rxns_list.remove('>>') # Remove empty reactions
     except ValueError:
         pass
+    
+    # Compare with the pool of already created reactions and keep only the new ones, update the pool
+    fictive_rxns_list = keep_new_rxns_and_save_to_rxnpool(dataset_name, template_hash_version, fictive_rxns_list)
 
     # Save in a txt file
     save_rxns(fictive_rxns_list, retro_reac, retro_template, dataset_version, template_hash_version, dataset_name)

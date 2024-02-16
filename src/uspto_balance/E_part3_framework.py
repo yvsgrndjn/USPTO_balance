@@ -20,7 +20,7 @@ def load_rxns(dataset_name: str, dataset_version: str, template_hash_version: st
     dataset_name (str):           Name of the dataset (str) ex: GDB13S, USPTO. Prerequisite (for the module, not the function): The dataset divided in 100 different
                                     files in the format {dataset_name}_i.txt for i from 1 to 1000 must be present in the folder dataset_balance/data/
     dataset_version (str):        Version of the dataset (str) being any integer from 1 to 1000.
-    template_hash_version (str):  Allows to trace back the template to the templates dataframe, it is constructed as follows. 
+    template_hash_version (str):  Allows to trace back the template to the templates dataframe, it is constructed as follows:f"{template_hash}_{template_line}"
     retro_reac (str):             SMARTS pattern of the substructure to match
     retro_template (str):         Reaction template in SMART format
     rxns_number:                  Number of reactions to load (default = 10000)
@@ -260,7 +260,7 @@ def save_rxns_and_conf_to_csv(rxns_val: list, MappedReactions: list, conf_scores
                                     The dataset divided in 1000 different files in the format {dataset_name}_i.txt for i from 1 to
                                     1000 must be present in the folder dataset_balance/data/
     dataset_version (str):          Version of the dataset (str) being any integer from 1 to 1000.
-    template_hash_version (str):    Allows to trace back the template to the templates dataframe, it is constructed as follows.
+    template_hash_version (str):    Allows to trace back the template to the templates dataframe, it is constructed as follows:f"{template_hash}_{template_line}"
     retro_reac (str):               SMARTS pattern of the substructure to match
     retro_template (str):           Reaction template in SMART format
     '''
@@ -306,7 +306,7 @@ def reactions_conf_validation(dataset_name: str, dataset_version: str, template_
                                     The dataset divided in 1000 different files in the format {dataset_name}_i.txt for i from 1 to 1000
                                     must be present in the folder dataset_balance/data/
     dataset_version (str):          Version of the dataset (str) being any integer from 1 to 1000.
-    template_hash_version (str):    Allows to trace back the template to the templates dataframe, it is constructed as follows.
+    template_hash_version (str):    Allows to trace back the template to the templates dataframe, it is constructed as follows:f"{template_hash}_{template_line}"
     retro_reac (str):               SMARTS pattern of the substructure to match
     retro_template (str):           Reaction template in SMART format
     Model_path_T2 (str):            Path to the model to use for prediction (here reagent prediction)

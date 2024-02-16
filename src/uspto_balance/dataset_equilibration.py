@@ -472,23 +472,49 @@ def main(dataset_name, retro_reac, retro_template, template_hash, template_line,
     # Start timer
     start = time.time()
 
-    print('In main')
-    counter = 1
-    num_added_rxns = 0
-    num_added_rxns_before = 0
+    # Get cpu information
+    cpu_type = platform.processor()
 
-    # Initialize random seed to shuffle the order of the dataset iterations
+    print('In main')
+
+    # 1. Check if the stats.csv file exists already, in that case load the previous enrichment statistics
+    # 1.1 Initialize the path to the stats.csv file
+    folder_path                = f'./results/saved_rxns/{dataset_name}'
+    template_hash_version      = f"{template_hash}_{template_line}"
+    name_to_save               = f'{dataset_name}_stats_{template_hash_version}'
+    path_to_csv = f'{folder_path}/full_{name_to_save}.csv'
+
+    # 1.2 If the stats.csv file exists, load the previous enrichment statistics as initialization
+    if os.path.exists(f'{path_to_csv}'):
+        df_last_time = pd.read_csv(f'{path_to_csv}')
+        counter                          = df_last_time.at[0, 'dataset fractions'] + 1
+        num_molecules_matchs             = df_last_time.at[0, 'molecules match']
+        num_created_rxns                 = df_last_time.at[0, 'created_rxns']
+        num_validated_rxns               = df_last_time.at[0, 'validated reactions']
+        num_validated_and_confident_rxns = df_last_time.at[0, 'validated and confident reactions']
+        time_elapsed_0                   = df_last_time.at[0, 'time elapsed']
+        initial_template_frequency       = template_frequency
+        template_frequency               = num_validated_and_confident_rxns
+        num_added_rxns_before            = num_validated_and_confident_rxns - initial_template_frequency
+        print(f'Continue enrichment from fraction {counter-1} with actual {template_frequency} template frequency (out of {frequency_target}), starting from originally {initial_template_frequency} reactions')
+
+    else: # 1.3 If no previous enrichment has been found, initialize from the beginning
+        counter                          = 1
+        num_molecules_matchs             = 0
+        num_created_rxns                 = 0
+        num_validated_rxns               = 0
+        num_validated_and_confident_rxns = 0
+        initial_template_frequency       = template_frequency
+        num_added_rxns_before            = 0
+        time_elapsed_0                   = 0
+
+    # 2. Initialize random seed to shuffle the order of the dataset iterations
     index_list = list(range(1, 1001))
     random.seed(template_line)
     random.shuffle(index_list)
 
-    initial_template_frequency = template_frequency
-
-    # Initialize the enrichment statistics
-    num_molecules_matchs = 0
-    num_created_rxns = 0
-    num_validated_rxns = 0
-    num_validated_and_confident_rxns = 0
+    # 3. Initialize variables specific to the while loop 
+    num_added_rxns = 0
 
     while template_frequency < frequency_target and counter <= 1000:
         print(f'Iteration {counter}')
@@ -512,19 +538,22 @@ def main(dataset_name, retro_reac, retro_template, template_hash, template_line,
         added_reactions = template_frequency - template_frequency_before
         print(f'Validated {num_added_rxns} reactions out of which {added_reactions} are confident > 0.95,  reactions added to the actual total {num_added_rxns_before} (total of validated and confident reactions = {template_frequency} / {frequency_target})for retro_reac: {retro_reac} and retro_template: {retro_template}')
 
+        # Stop timer 
+        end = time.time()
+        time_elapsed = end - start + time_elapsed_0
+
+        create_enrichment_stats_csv(dataset_name, dataset_version, template_hash, template_line, num_molecules_matchs, num_created_rxns, num_validated_rxns, num_validated_and_confident_rxns, time_elapsed, cpu_type)
+
     # Stop timer
     end = time.time()
-    time_elapsed = end - start
-
-    # Get cpu information
-    cpu_type = platform.processor()
+    time_elapsed = end - start + time_elapsed_0
 
     if counter == 1:
-        print(f'Reaction frequency threshold already satisfied for retro_reac: {retro_reac} and retro_template: {retro_template}')
-    else:
         create_enrichment_stats_csv(dataset_name, dataset_version, template_hash, template_line, num_molecules_matchs, num_created_rxns, num_validated_rxns, num_validated_and_confident_rxns, time_elapsed, cpu_type)
-    ## Append number of enrichment runs information to the results csv file
-    #add_dataset_fraction_to_csv(dataset_name, dataset_version, template_hash, template_line, retro_reac, retro_template)
+        print(f'Reaction frequency threshold already satisfied for retro_reac: {retro_reac} and retro_template: {retro_template}')
+    #else:
+    #    create_enrichment_stats_csv(dataset_name, dataset_version, template_hash, template_line, num_molecules_matchs, num_created_rxns, num_validated_rxns, num_validated_and_confident_rxns, time_elapsed, cpu_type)
+    
     print(f'Enrichment finished (with counter = {counter-1}):  initial {initial_template_frequency} reactions were enriched to {template_frequency} for retro_reac: {retro_reac} and retro_template: {retro_template}')
     
 

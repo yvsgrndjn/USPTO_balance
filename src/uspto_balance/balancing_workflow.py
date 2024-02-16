@@ -7,6 +7,8 @@ import pickle
 from itertools import chain
 from itertools import islice
 import yaml
+from tqdm import tqdm
+import math
 from ttlretro.single_step_retro import SingleStepRetrosynthesis
 singlestepretrosynthesis = SingleStepRetrosynthesis()
 
@@ -1096,6 +1098,49 @@ def find_reaction_template_of_hash(fulltemplate_df:pd.DataFrame, template):
     return fulltemplate_df[fulltemplate_df['template_hash'] == template]['retro_template'].value_counts().keys().tolist()[0]
 
 
+def load_stats_csv_into_df(path_to_folder: str, dataset_name: str, df_templates: pd.DataFrame):
+    '''
+    Takes the overall statistics of the enrichment process (dataset_equilibration performed on several templates) and loads them into a dataframe summarizing the results for each template hash.
+
+    --Inputs--
+    path_to_folder (str):           path to the folder containing the csv files with the statistics of the enrichment process, typically: f'./results/saved_rxns/{dataset_name}/'
+    dataset_name (str):             name of the dataset (str) ex: GDB13S, USPTO
+    df_templates (pd.DataFrame):    dataframe containing the information on the templates to be enriched 
+    '''
+    df_template_stats = pd.DataFrame(columns=['template line', 'dataset fractions', 'molecules match', 'created_rxns', 'validated reactions', 'validated and confident reactions', 'time elapsed', 'cpu type'])
+    df_template_stats.set_index('template line', inplace=True)
+
+    for template_line in tqdm(range(len(df_templates))):
+        try:
+            template_hash = df_templates.at[template_line,'template_hash']
+            name_saved = f'full_{dataset_name}_stats_{template_hash}_{template_line}.csv'
+            dftemp = pd.read_csv(f'{path_to_folder}{name_saved}')
+            dftemp.set_index('template line', inplace=True)
+            df_template_stats = pd.concat([df_template_stats, dftemp], axis = 0)
+        except FileNotFoundError: 
+            # Adds empty lines for the templates that did not have any results
+            dftemp = pd.DataFrame({'template line': [template_line]})
+            dftemp.set_index('template line', inplace=True)
+            df_template_stats = pd.concat([df_template_stats, dftemp], axis = 0)
+    return df_template_stats
+
+
+def find_nan_stats_csv(df_template_stats: pd.DataFrame):
+    '''
+    Find the NaN rows in the df_template_stats dataframe, which also corresponds to the templates for which no stats.csv file was found. Apply on dataframes created by load_csv_into_df().
+    '''
+    # bool list
+    # 1. find NaN rows (= with no existing stats.csv files)
+    temp1 = [ (math.isnan(el)) for el in df_template_stats['dataset fractions'] ]
+
+    # 2. Only look at the lines that are supposed to have a stats.csv file (between 4430 and 10'000)
+    temp2 = (df_template_stats.index > 4429) & (df_template_stats.index < 10000)
+
+    # -- combine all the conditions together
+    temp = (temp1 & temp2)
+    nan_ind_list = df_template_stats[temp].index
+
+    return nan_ind_list
 
 
 
