@@ -85,6 +85,7 @@ def extract_subset_from_dataset(dataset_name, dataset_version, retro_reac, retro
     temp_name       = f'{dataset_name}_temp_{template_hash_version}'
     temp_list       = []
 
+    print(f'{folder_path}/{name}.txt')
     # Run part 1 if the subset does not exist yet
     if not os.path.exists(f'{folder_path}/{name}.txt'):
 
@@ -119,7 +120,15 @@ def extract_subset_from_dataset(dataset_name, dataset_version, retro_reac, retro
             config1['retro_template']
             )
         return num_molecules_matchs
-
+    else:
+        with open(f'{folder_path}/{name}.txt', 'r') as f:
+            file = []
+            for line in f:
+                file.append(line.split('\n')[0])
+        if file is not None:
+            return len(file)
+        else:
+            return 0
 
 def create_reactions_using_template(dataset_name: str, dataset_version: str, retro_reac: str, retro_template: str, template_hash: str, template_line: str, path_to_folder: str):
     '''

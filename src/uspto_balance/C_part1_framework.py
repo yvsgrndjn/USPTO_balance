@@ -244,6 +244,10 @@ def main(dataset_name: str, dataset_path: str, dataset_version: str, template_ha
             return len(dataset_sub)
         else:
             return 0
+        #if dataset_sub is not None:
+        #    return len(dataset_sub)
+        #else:
+        #    return 0
 
 if __name__ == '__main__':
     
