@@ -10,6 +10,7 @@ import yaml
 from tqdm import tqdm
 import math
 import random
+from multiprocessing import Pool
 from ttlretro.single_step_retro import SingleStepRetrosynthesis
 singlestepretrosynthesis = SingleStepRetrosynthesis()
 
@@ -1338,3 +1339,43 @@ def subset_n_random_reactions_per_template(full_df_conf, target, random_seed=42)
         else: # cannot be zero from the full_df_conf['template_line'].unique() list
             df_concat = pd.concat([df_concat, df])
     return df_concat
+
+# Functions related to split the models and save the txt files
+
+def calc_src_T1(df: pd.DataFrame, column_name: str)-> list:
+    src_T1 = [df.at[i, column_name].split('>')[2] for i in range(len(df))]
+    return src_T1
+
+
+def calc_tgt_T1(df: pd.DataFrame, column_name: str)-> list:
+    tgt_T1 = [df.at[i, column_name].split('>')[0] for i in range(len(df))]
+    return tgt_T1
+
+
+def calc_src_T2(df: pd.DataFrame, column_name: str)-> list:
+    src_T2 = [df.at[i, column_name].split('>')[0] + '>>' + df.at[i, column_name].split('>')[2] for i in range(len(df))]
+    return src_T2
+
+
+def calc_tgt_T2(df: pd.DataFrame, column_name: str)-> list:
+    tgt_T2 = [df.at[i, column_name].split('>')[1] for i in range(len(df))]
+    return tgt_T2
+
+
+def calc_src_T3(df: pd.DataFrame, column_name: str)-> list:
+    src_T3 = [df.at[i, column_name].split('>')[0] + '>' + df.at[i, column_name].split('>')[1] for i in range(len(df))]
+    return src_T3
+
+
+def calc_tgt_T3(df: pd.DataFrame, column_name: str)-> list:
+    tgt_T3 = [df.at[i, column_name].split('>')[2] for i in range(len(df))]
+    return tgt_T3
+
+
+def save_list_to_txt(path: str, list_to_save: list, filename: str):
+
+    if not os.path.exists(path):
+        os.makedirs(path)
+    with open(path + filename, 'w') as f:
+        for item in list_to_save:
+            f.write("%s\n" % item)
