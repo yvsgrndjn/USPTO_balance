@@ -314,21 +314,22 @@ def evaluate_onmt_model(src_output_path:str, tgt_path:str, path_to_folder:str, d
     return test_df
 
 
-def calculate_round_trip_accuracy(
-    src_path:str, tgt_path:str, save_path:str, mark_count:int=2, neighbors:bool=True, Random_Tagging:bool=True,
-    AutoTagging:bool=False, AutoTagging_Beam_Size:int=100, Substructure_Tagging:bool=True,
+def calculate_round_trip_accuracy_TTL(
+    src_path:str, tgt_path:str, save_path:str, T1_path:str, T2_path:str, T3_path:str, T3_FT_path:str,
+    mark_count:int=3, neighbors:bool=True, Random_Tagging:bool=True,
+    AutoTagging:bool=True, AutoTagging_Beam_Size:int=50, Substructure_Tagging:bool=True,
     Retro_USPTO:bool=True, Std_Fwd_USPTO:bool=False, Fwd_USPTO_Reag_Pred:bool=True,
-    Fwd_USPTO_Tag_React:bool=True, USPTO_Reag_Beam_Size:int=3, confidence_filter:bool=True,
+    Fwd_USPTO_Tag_React:bool=False, USPTO_Reag_Beam_Size:int=3, confidence_filter:bool=True,
     Retro_beam_size:int=5, mark_locations_filter:int=1, log:bool=True, RTA_test_mode:bool=True
     ):
     '''
     src_path(str):              path leading to the input to round trip accuracy.
     tgt_path(str):              path leading to the ground truth of the round trip accuracy. 
     save_path(str):             path_to/name_of_file to save the pkl results of the RTA
-    USPTO_T1_path(str):
-    USPTO_T2_path(str):
-    USPTO_T3_path(str):
-    USPTO_T3_FT_path(str):
+    T1_path(str):               path to the single-step retrosynthesis model (T1)
+    T2_path(str):               path to the reagent prediction model (T2)
+    T3_path(str):               path to the forward validation model (T3)
+    T3_FT_path(str):            path to the forward validation model with tagged reactants as input (T3_FT)
     mark_count(int)             (default 2)
     neighbors(bool)             (default True)
     Random_Tagging(bool)        (default True)
@@ -338,7 +339,7 @@ def calculate_round_trip_accuracy(
     Retro_USPTO(bool)           (default True)
     Std_Fwd_USPTO(bool)         (default False)
     Fwd_USPTO_Reag_Pred(bool)   (default True)
-    Fwd_USPTO_Tag_React(bool)   (default True)
+    Fwd_USPTO_Tag_React(bool)   (default False)
     USPTO_Reag_Beam_Size(int)   (default 3)
     confidence_filter(bool)     (default True)
     Retro_beam_size(int)        (default 5)
@@ -366,13 +367,12 @@ def calculate_round_trip_accuracy(
     targets_acquired = []
     topk_reag = []  
 
-
+    singlestepretrosynthesis.USPTO_T1_path = T1_path
+    singlestepretrosynthesis.USPTO_T2_path = T2_path
+    singlestepretrosynthesis.USPTO_T3_path = T3_path
+    singlestepretrosynthesis.USPTO_T3_FT_path = T3_FT_path
     
-    #singlestepretrosynthesis.USPTO_T1_path = 
-    #singlestepretrosynthesis.USPTO_T2_path = 
-    #singlestepretrosynthesis.USPTO_T3_path =
-    #singlestepretrosynthesis.USPTO_T3_FT_path =
-    
+    #check that there is a tmp folder available to store results of the execute_prediction function to avoid errors
 
     for ind in tqdm.tqdm(range(0,len(src))):
         SMILES = smiles_list[ind]
@@ -386,7 +386,7 @@ def calculate_round_trip_accuracy(
             AutoTagging_Beam_Size=AutoTagging_Beam_Size,
             Substructure_Tagging=Substructure_Tagging,
             Retro_USPTO=Retro_USPTO,
-            Std_Fwd_USPTO=Std_Fwd_USPTO,
+            #Std_Fwd_USPTO=Std_Fwd_USPTO,
             Fwd_USPTO_Reag_Pred=Fwd_USPTO_Reag_Pred,
             Fwd_USPTO_Tag_React = Fwd_USPTO_Tag_React,
             USPTO_Reag_Beam_Size=USPTO_Reag_Beam_Size,
@@ -394,8 +394,8 @@ def calculate_round_trip_accuracy(
             Retro_beam_size=Retro_beam_size,
             mark_locations_filter=mark_locations_filter,
             log=log,
-            RTA_test_mode = RTA_test_mode,
-            RTA_input_file = RTA_input_file
+            #RTA_test_mode = RTA_test_mode,
+            #RTA_input_file = RTA_input_file
             )
         src_tag.append(src[ind].count('!'))
 
