@@ -11,14 +11,15 @@ import onmt.bin.train as train
 import onmt.bin.translate as trsl
 
 # for round trip accuracy function
-import pandas as pd
+import datetime
 import pickle
 import csv
-import tqdm
 from ttlretro.single_step_retro import SingleStepRetrosynthesis
 singlestepretrosynthesis = SingleStepRetrosynthesis()
 from ttlretro.rxnmarkcenter import RXNMarkCenter
 rxnmarkcenter = RXNMarkCenter()
+from rxnmapper import BatchedMapper
+rxn_mapper_batch = BatchedMapper(batch_size=10, canonicalize=False)
 
 
 # Folder structure
@@ -215,7 +216,7 @@ def translate_with_onmt_model(dataset:str, experiment:str, path_to_folder: str, 
 
 # EVALUATE -------
 
-def canonicalize_smiles(smiles):
+def canonicalize_smiles(smiles:str):
     mol = Chem.MolFromSmiles(smiles)
     if mol is not None:
         return Chem.MolToSmiles(mol, isomericSmiles=True)
@@ -225,7 +226,7 @@ def canonicalize_smiles(smiles):
 
 def get_rank(row, base, max_rank):
     for i in range(1, max_rank+1):
-        if row['target'] == row['{}{}'.format(base, i)]:
+        if row['Target'] == row['{}{}'.format(base, i)]:
             return i
     return 0
 
@@ -273,13 +274,13 @@ def evaluate_onmt_model(src_output_path:str, tgt_path:str, path_to_folder:str, d
     
     
     test_df = pd.DataFrame(['' for element in range(0, len(predictions[0]))])#targets)
-    test_df.columns = ['target']
+    test_df.columns = ['Target']
 
     for i, preds in tqdm(enumerate(predictions)):
         test_df['prediction_{}'.format(i + 1)] = preds
         test_df['canonical_prediction_{}'.format(i + 1)] = test_df['prediction_{}'.format(i + 1)].apply(lambda x: canonicalize_smiles(x))
     for i, tgt in tqdm(enumerate(target)):
-        test_df['target'][i] = canonicalize_smiles(tgt)
+        test_df['Target'][i] = canonicalize_smiles(tgt)
     for i, prob in tqdm(enumerate(probs)):
         test_df['prediction_prob_{}'.format(i + 1)] = prob
 
@@ -314,114 +315,372 @@ def evaluate_onmt_model(src_output_path:str, tgt_path:str, path_to_folder:str, d
     return test_df
 
 
-def calculate_round_trip_accuracy_TTL(
-    src_path:str, tgt_path:str, save_path:str, T1_path:str, T2_path:str, T3_path:str, T3_FT_path:str,
-    mark_count:int=3, neighbors:bool=True, Random_Tagging:bool=True,
-    AutoTagging:bool=True, AutoTagging_Beam_Size:int=50, Substructure_Tagging:bool=True,
-    Retro_USPTO:bool=True, Std_Fwd_USPTO:bool=False, Fwd_USPTO_Reag_Pred:bool=True,
-    Fwd_USPTO_Tag_React:bool=False, USPTO_Reag_Beam_Size:int=3, confidence_filter:bool=True,
-    Retro_beam_size:int=5, mark_locations_filter:int=1, log:bool=True, RTA_test_mode:bool=True
+#def calculate_round_trip_accuracy_TTL(
+#    src_path:str, tgt_path:str, save_path:str, T1_path:str, T2_path:str, T3_path:str, T3_FT_path:str,
+#    mark_count:int=3, neighbors:bool=True, Random_Tagging:bool=True,
+#    AutoTagging:bool=True, AutoTagging_Beam_Size:int=50, Substructure_Tagging:bool=True,
+#    Retro_USPTO:bool=True, Std_Fwd_USPTO:bool=False, Fwd_USPTO_Reag_Pred:bool=True,
+#    Fwd_USPTO_Tag_React:bool=False, USPTO_Reag_Beam_Size:int=3, confidence_filter:bool=True,
+#    Retro_beam_size:int=5, mark_locations_filter:int=1, log:bool=True, RTA_test_mode:bool=True
+#    ):
+#    '''
+#    src_path(str):              path leading to the input to round trip accuracy.
+#    tgt_path(str):              path leading to the ground truth of the round trip accuracy. 
+#    save_path(str):             path_to/name_of_file to save the pkl results of the RTA
+#    T1_path(str):               path to the single-step retrosynthesis model (T1)
+#    T2_path(str):               path to the reagent prediction model (T2)
+#    T3_path(str):               path to the forward validation model (T3)
+#    T3_FT_path(str):            path to the forward validation model with tagged reactants as input (T3_FT)
+#    mark_count(int)             (default 2)
+#    neighbors(bool)             (default True)
+#    Random_Tagging(bool)        (default True)
+#    AutoTagging(bool)           (default False)
+#    AutoTagging_Beam_Size(int)  (default 100)
+#    Substructure_Tagging(bool)  (default True)
+#    Retro_USPTO(bool)           (default True)
+#    Std_Fwd_USPTO(bool)         (default False)
+#    Fwd_USPTO_Reag_Pred(bool)   (default True)
+#    Fwd_USPTO_Tag_React(bool)   (default False)
+#    USPTO_Reag_Beam_Size(int)   (default 3)
+#    confidence_filter(bool)     (default True)
+#    Retro_beam_size(int)        (default 5)
+#    mark_locations_filter(int)  (default 1)
+#    log(bool)                   (default True)
+#    RTA_test_mode(bool)         (default True)
+#    '''
+#
+#    #src_path = './data/roundtrip_eval/src_test.txt'
+#    with open(src_path, 'r') as f:
+#        src = f.readlines()
+#    src = [el.strip('\n') for el in src]
+#
+#    #tgt_path = './data/T1_Fwd/tgt_test.txt'
+#    with open(tgt_path, 'r') as f:
+#        smiles_list = f.readlines()
+#    smiles_list = [el.strip('\n') for el in smiles_list]
+#    smiles_list = [el.replace(' ','') for el in smiles_list]
+#
+#    #check first that both input files are of the same length (they should correspond)
+#    if len(src) != len(smiles_list):
+#        print('SMILES and tagged SMILES do not correspond, they must be of same length')
+#
+#    src_tag = []
+#    targets_acquired = []
+#    topk_reag = []  
+#
+#    singlestepretrosynthesis.USPTO_T1_path = T1_path
+#    singlestepretrosynthesis.USPTO_T2_path = T2_path
+#    singlestepretrosynthesis.USPTO_T3_path = T3_path
+#    singlestepretrosynthesis.USPTO_T3_FT_path = T3_FT_path
+#    
+#    #check that there is a tmp folder available to store results of the execute_prediction function to avoid errors
+#
+#    for ind in tqdm(range(0,len(src))):
+#        SMILES = smiles_list[ind]
+#        RTA_input_file = [src[ind]]
+#        df_filtered, backup = singlestepretrosynthesis.Execute_Retro_Prediction(
+#            SMILES, 
+#            mark_count=mark_count,
+#            neighbors=neighbors,
+#            Random_Tagging=Random_Tagging,
+#            AutoTagging=AutoTagging,
+#            AutoTagging_Beam_Size=AutoTagging_Beam_Size,
+#            Substructure_Tagging=Substructure_Tagging,
+#            Retro_USPTO=Retro_USPTO,
+#            #Std_Fwd_USPTO=Std_Fwd_USPTO,
+#            Fwd_USPTO_Reag_Pred=Fwd_USPTO_Reag_Pred,
+#            Fwd_USPTO_Tag_React = Fwd_USPTO_Tag_React,
+#            USPTO_Reag_Beam_Size=USPTO_Reag_Beam_Size,
+#            confidence_filter=confidence_filter,
+#            Retro_beam_size=Retro_beam_size,
+#            mark_locations_filter=mark_locations_filter,
+#            log=log,
+#            #RTA_test_mode = RTA_test_mode,
+#            #RTA_input_file = RTA_input_file
+#            )
+#        src_tag.append(src[ind].count('!'))
+#
+#        return df_filtered
+#
+#        if len(df_filtered) > 0:
+#            #try calculating the rank of each line
+#            df_filtered['rank'] = df_filtered.apply(lambda row: get_rank(row, 'canonical_prediction_', USPTO_Reag_Beam_Size), axis=1)
+#            #return df_filtered
+#            targets_acquired.append(1)
+#            topk_reag.append(df_filtered['Reag_rank'].min())
+#        else:
+#            targets_acquired.append(0)
+#            topk_reag.append(0)
+#
+#        #save once every 100 molecules
+#        if ind % 5 == 0 or ind == len(src):
+#            df_RTA_results = pd.DataFrame(columns=['Tags','Target_acquired','topk_reag'])
+#            df_RTA_results['Tags'] = src_tag
+#            df_RTA_results['Target_acquired'] = targets_acquired
+#            df_RTA_results['topk_reag'] = topk_reag
+#
+#            with open('RTA_' + str(save_path) + '.pkl', 'wb') as f:
+#                pickle.dump(df_RTA_results, f)
+#
+#    RTA = sum(targets_acquired)/len(src)
+#    top1_k = sum([1 for el in topk_reag if el == 1])/len(src)
+#    top2_k = sum([1 for el in topk_reag if el <= 2])/len(src)
+#    top3_k = sum([1 for el in topk_reag if el <= 3])/len(src)
+#
+#    print('RTA: ', RTA, '\n',
+#        'top1_k: ', top1_k, '\n',
+#        'top2_k: ', top2_k, '\n',
+#        'top3_k: ', top3_k, '\n')
+
+
+def RoundTrip(
+    SRC_TEST_SET_PATH:str, 
+    MODEL_T1_PATH:str, 
+    MODEL_T2_PATH:str, 
+    MODEL_T3_PATH:str, 
+    MODEL_T3_FT_PATH:str, 
+    T2_INPUT_LABEL:str, 
+    USE_T3_FT:bool=False, 
+    save_pickle_path:str='./save.pkl', 
+    Max_SRC_Length:int=100000, 
+    random_state:int=42
     ):
     '''
-    src_path(str):              path leading to the input to round trip accuracy.
-    tgt_path(str):              path leading to the ground truth of the round trip accuracy. 
-    save_path(str):             path_to/name_of_file to save the pkl results of the RTA
-    T1_path(str):               path to the single-step retrosynthesis model (T1)
-    T2_path(str):               path to the reagent prediction model (T2)
-    T3_path(str):               path to the forward validation model (T3)
-    T3_FT_path(str):            path to the forward validation model with tagged reactants as input (T3_FT)
-    mark_count(int)             (default 2)
-    neighbors(bool)             (default True)
-    Random_Tagging(bool)        (default True)
-    AutoTagging(bool)           (default False)
-    AutoTagging_Beam_Size(int)  (default 100)
-    Substructure_Tagging(bool)  (default True)
-    Retro_USPTO(bool)           (default True)
-    Std_Fwd_USPTO(bool)         (default False)
-    Fwd_USPTO_Reag_Pred(bool)   (default True)
-    Fwd_USPTO_Tag_React(bool)   (default False)
-    USPTO_Reag_Beam_Size(int)   (default 3)
-    confidence_filter(bool)     (default True)
-    Retro_beam_size(int)        (default 5)
-    mark_locations_filter(int)  (default 1)
-    log(bool)                   (default True)
-    RTA_test_mode(bool)         (default True)
+    Calculates the round trip accuracy (RTA) of the TTL and TTLFT model types. For a reaction described as A>B>C, takes
+    as input tok(C!). The retrosynthesis model (T1) will predict tok(A'). Reagent prediction model (T2) takes tok(A') > > tok(C)
+    as input and returns tok(B'). The boolean 'USE_T3_FT' parameter allows to set if the forward validation model (T3)
+    works with tagged reactants (=Forward Tag) or not (denoted T3FT). Forward validation model (T3) takes tok(A') > tok(B')
+    as input and returns C'.
+    The round trip accuracy is calculated as the sum^i_0( C_i == C'_i )/i
+    The reagent prediction model (T2) is set to produce three suggestions for each Retrosynthetic prediction (=beam size of 3), 
+    giving the top-k accuracies with k = 1,2,3.
+
+    --Input
+    SRC_TEST_SET_PATH (str) :
+    MODEL_T1_PATH     (str) :    
+    MODEL_T2_PATH     (str) :    
+    MODEL_T3_PATH     (str) :    
+    MODEL_T3_FT_PATH  (str) : 
+    T2_INPUT_LABEL    (str) :   
+    USE_T3_FT         (bool):      
+    save_pickle_path  (str) : 
+    Max_SRC_Length    (int) :   
+    random_state      (int) :     
+
+    --Output
     '''
 
-    #src_path = './data/roundtrip_eval/src_test.txt'
-    with open(src_path, 'r') as f:
-        src = f.readlines()
-    src = [el.strip('\n') for el in src]
+    CurrentParameters = {
+        'SRC_TEST_SET_PATH' : SRC_TEST_SET_PATH, 
+        'MODEL_T1_PATH'     : MODEL_T1_PATH, 
+        'MODEL_T2_PATH'     : MODEL_T2_PATH, 
+        'MODEL_T3_PATH'     : MODEL_T3_PATH, 
+        'MODEL_T3_FT_PATH'  : MODEL_T3_FT_PATH,
+        'T2_INPUT_LABEL'    : T2_INPUT_LABEL,
+        'USE_T3_FT'         : USE_T3_FT,
+        'save_pickle_path'  : save_pickle_path, 
+        'Max_SRC_Length'    : Max_SRC_Length,
+        'random_state'      : random_state
+    }
+    src_test = []
+    src_test_tagged = []
+    with open(SRC_TEST_SET_PATH, 'r') as f:
+        for i, line in enumerate(f.readlines()):
+            src_test.append(''.join(line.strip().split(' ')).replace('!',''))
+            src_test_tagged.append(line.strip())
 
-    #tgt_path = './data/T1_Fwd/tgt_test.txt'
-    with open(tgt_path, 'r') as f:
-        smiles_list = f.readlines()
-    smiles_list = [el.strip('\n') for el in smiles_list]
-    smiles_list = [el.replace(' ','') for el in smiles_list]
+    df = pd.DataFrame(['' for el in range(0, len(src_test))])
+    df.attrs['ModelParameters'] = CurrentParameters
+    df.columns                  = ['SRC_T1']
+    df['SRC_smiles']            = src_test
+    df['SRC_T1_input']          = src_test_tagged
 
-    #check first that both input files are of the same length (they should correspond)
-    if len(src) != len(smiles_list):
-        print('SMILES and tagged SMILES do not correspond, they must be of same length')
+    # Sample dataframe if length exceeds the maximum allowed:
+    if len(df) > Max_SRC_Length:
+        df = df.sample(n=Max_SRC_Length, random_state=random_state).reset_index(drop=True)
+    print('Length:', len(df))
+    df.to_pickle(save_pickle_path)
 
-    src_tag = []
-    targets_acquired = []
-    topk_reag = []  
+    # Check for tmp folder existence needed for onmt predictions
+    if not os.path.exists('./tmp/'):
+        os.makedirs('./tmp/')
 
-    singlestepretrosynthesis.USPTO_T1_path = T1_path
-    singlestepretrosynthesis.USPTO_T2_path = T2_path
-    singlestepretrosynthesis.USPTO_T3_path = T3_path
-    singlestepretrosynthesis.USPTO_T3_FT_path = T3_FT_path
-    
-    #check that there is a tmp folder available to store results of the execute_prediction function to avoid errors
+    #Part 2 -- T1 predictions
+    #-------
+    print('Predicting T1...')
+    predictions, probs = singlestepretrosynthesis.Execute_Prediction(
+        SMILES_list         = df['SRC_T1_input'].tolist(),
+        Model_path          = MODEL_T1_PATH, 
+        beam_size           = 5, 
+        batch_size          = 64, 
+        untokenize_output   = False, 
+    )
+    df['T1_pred_1']         = predictions[0]
+    df['T1_pred_conf_1']    = probs[0]
+    df.to_pickle(save_pickle_path)
 
-    for ind in tqdm.tqdm(range(0,len(src))):
-        SMILES = smiles_list[ind]
-        RTA_input_file = [src[ind]]
-        df_filtered, backup = singlestepretrosynthesis.Execute_Retro_Prediction(
-            SMILES, 
-            mark_count=mark_count,
-            neighbors=neighbors,
-            Random_Tagging=Random_Tagging,
-            AutoTagging=AutoTagging,
-            AutoTagging_Beam_Size=AutoTagging_Beam_Size,
-            Substructure_Tagging=Substructure_Tagging,
-            Retro_USPTO=Retro_USPTO,
-            #Std_Fwd_USPTO=Std_Fwd_USPTO,
-            Fwd_USPTO_Reag_Pred=Fwd_USPTO_Reag_Pred,
-            Fwd_USPTO_Tag_React = Fwd_USPTO_Tag_React,
-            USPTO_Reag_Beam_Size=USPTO_Reag_Beam_Size,
-            confidence_filter=confidence_filter,
-            Retro_beam_size=Retro_beam_size,
-            mark_locations_filter=mark_locations_filter,
-            log=log,
-            #RTA_test_mode = RTA_test_mode,
-            #RTA_input_file = RTA_input_file
-            )
-        src_tag.append(src[ind].count('!'))
+    # PREDICTIONS THAT DID NOT DO ANYTHING:
+    df['T1_pred_1_check']   = [''.join(el.split(' ')) for el in df['T1_pred_1']]
+    df['T1_pred_1_check2']  = False
+    for el in range(0, len(df)):
+        if df.at[el, 'SRC_smiles'] in df.at[el, 'T1_pred_1_check'].split('.'):
+            df.at[el, 'T1_pred_1_check2'] = True
+    del df['T1_pred_1_check']
 
-        if len(df_filtered) > 0:
-            targets_acquired.append(1)
-            topk_reag.append(df_filtered['Reag_rank'].min())
-        else:
-            targets_acquired.append(0)
-            topk_reag.append(0)
+    #Part 3 -- T2 predictions
+    #-------
+    print('Predicting T2...')
+    df['SRC_T2_input'] = [df.at[el, 'T1_pred_1'] + ' > > ' + df.at[el, 'SRC_T1_input'].replace(' !', '') + T2_INPUT_LABEL for el in range(0, len(df))]
 
-        #save once every 100 molecules
-        if ind % 5 == 0 or ind == len(src):
-            df_RTA_results = pd.DataFrame(columns=['Tags','Target_acquired','topk_reag'])
-            df_RTA_results['Tags'] = src_tag
-            df_RTA_results['Target_acquired'] = targets_acquired
-            df_RTA_results['topk_reag'] = topk_reag
+    predictions, probs = singlestepretrosynthesis.Execute_Prediction(
+        SMILES_list         = df['SRC_T2_input'].tolist(),
+        Model_path          = MODEL_T2_PATH, 
+        beam_size           = 3, 
+        batch_size          = 64, 
+        untokenize_output   = False, 
+    )
+    df['T2_pred_1'] = predictions[0]
+    df['T2_pred_2'] = predictions[1]
+    df['T2_pred_3'] = predictions[2]
+    df.to_pickle(save_pickle_path)
 
-            with open('RTA_' + str(save_path) + '.pkl', 'wb') as f:
-                pickle.dump(df_RTA_results, f)
 
-    RTA = sum(targets_acquired)/len(src)
-    top1_k = sum([1 for el in topk_reag if el == 1])/len(src)
-    top2_k = sum([1 for el in topk_reag if el <= 2])/len(src)
-    top3_k = sum([1 for el in topk_reag if el <= 3])/len(src)
+    #Part 4 -- T3 predictions + sumup 
+    #-------
+    if not USE_T3_FT:
+        print('Predicting T3, first reagent set...')
+        df['SRC_T3_input_R1'] = [df.at[el, 'T1_pred_1'] + ' > ' + df.at[el, 'T2_pred_1'] for el in range(0, len(df))]
+        df['SRC_T3_input_R2'] = [df.at[el, 'T1_pred_1'] + ' > ' + df.at[el, 'T2_pred_2'] for el in range(0, len(df))]
+        df['SRC_T3_input_R3'] = [df.at[el, 'T1_pred_1'] + ' > ' + df.at[el, 'T2_pred_3'] for el in range(0, len(df))]
 
-    print('RTA: ', RTA, '\n',
-        'top1_k: ', top1_k, '\n',
-        'top2_k: ', top2_k, '\n',
-        'top3_k: ', top3_k, '\n')
+        predictions, probs = singlestepretrosynthesis.Execute_Prediction(
+            SMILES_list         = df['SRC_T3_input_R1'].tolist(),
+            Model_path          = MODEL_T3_PATH, 
+            beam_size           = 3, 
+            batch_size          = 64, 
+            untokenize_output   = True, 
+        )
+        df['T3_pred_R1']        = predictions[0]
+        df['T3_pred_conf_R1']   = probs[0]
+        df.to_pickle(save_pickle_path)
+
+        print('Predicting T3, second reagent set...')
+        predictions, probs = singlestepretrosynthesis.Execute_Prediction(
+            SMILES_list         = df['SRC_T3_input_R2'].tolist(),
+            Model_path          = MODEL_T3_PATH, 
+            beam_size           = 3, 
+            batch_size          = 64, 
+            untokenize_output   = True, 
+        )
+        df['T3_pred_R2']        = predictions[0]
+        df['T3_pred_conf_R2']   = probs[0]
+        df.to_pickle(save_pickle_path)
+
+        print('Predicting T3, third reagent set...')
+        predictions, probs = singlestepretrosynthesis.Execute_Prediction(
+            SMILES_list         = df['SRC_T3_input_R3'].tolist(),
+            Model_path          = MODEL_T3_PATH, 
+            beam_size           = 3, 
+            batch_size          = 64, 
+            untokenize_output   = True, 
+        )
+
+        df['T3_pred_R3']        = predictions[0]
+        df['T3_pred_conf_R3']   = probs[0]
+        df.to_pickle(save_pickle_path)
+
+
+        df['SRC_smiles_can'] = [singlestepretrosynthesis.canonicalize_smiles(el) for el in df['SRC_smiles']]
+        df['T3_pred_R1_can'] = [singlestepretrosynthesis.canonicalize_smiles(el) for el in df['T3_pred_R1']]
+        df['T3_pred_R2_can'] = [singlestepretrosynthesis.canonicalize_smiles(el) for el in df['T3_pred_R2']]
+        df['T3_pred_R3_can'] = [singlestepretrosynthesis.canonicalize_smiles(el) for el in df['T3_pred_R3']]
+
+        df['T3_pred_R1_acc'] = [True if df.at[el, 'T3_pred_R1_can'] == df.at[el, 'SRC_smiles_can'] else False for el in range(0, len(df))]
+        df['T3_pred_R2_acc'] = [True if df.at[el, 'T3_pred_R2_can'] == df.at[el, 'SRC_smiles_can'] else False for el in range(0, len(df))]
+        df['T3_pred_R3_acc'] = [True if df.at[el, 'T3_pred_R3_can'] == df.at[el, 'SRC_smiles_can'] else False for el in range(0, len(df))]
+
+        df['T3_pred_R1_acc'] = [False if df.at[el, 'T1_pred_1_check2'] == True else df.at[el, 'T3_pred_R1_acc'] for el in range(0, len(df))]
+        df['T3_pred_R2_acc'] = [False if df.at[el, 'T1_pred_1_check2'] == True else df.at[el, 'T3_pred_R2_acc'] for el in range(0, len(df))]
+        df['T3_pred_R3_acc'] = [False if df.at[el, 'T1_pred_1_check2'] == True else df.at[el, 'T3_pred_R3_acc'] for el in range(0, len(df))]
+
+        print('\n')
+        print(round(100*len(df[(df['T3_pred_R1_acc'] == True)]), 2) / len(df), '% top-1 T2 reagents')
+        print(round(100*len(df[(df['T3_pred_R2_acc'] == True) | (df['T3_pred_R1_acc'] == True)]), 2) / len(df), '% top-2 T2 reagents')
+        print(round(100*len(df[(df['T3_pred_R3_acc'] == True) | (df['T3_pred_R2_acc'] == True) | (df['T3_pred_R1_acc'] == True)]), 2) / len(df), '% top-3 T2 reagents')
+        print('\n')
+
+        df.to_pickle(save_pickle_path)
+    else: # part 5 -- T3 Forward tag predictions + sumup
+        print('Mapping reactions...')
+        
+        # prepare A>>C reactions untokenized for mapping
+        df['rxnstomap']      = [df.at[el, 'T1_pred_1'].replace(' ','') + '>>' + df.at[el, 'SRC_smiles'] for el in range(0, len(df))]
+        df['MappedReaction'] = list(rxn_mapper_batch.map_reactions(df['rxnstomap'].to_list()))
+        df['TaggedReaction'] = ['' if df.at[el, 'MappedReaction']=='>>' else rxnmarkcenter.TagMappedReactionCenter(df.at[el, 'MappedReaction'], alternative_marking=True, tag_reactants=True) for el in range(len(df))]
+
+        print('Predicting T3 with tagged reactants, first reagent set...')
+        df['SRC_T3_FT_input_R1'] = ['' if df.at[el, 'TaggedReaction']=='' else singlestepretrosynthesis.smi_tokenizer(df.at[el, 'TaggedReaction'].split('>>')[0]) + ' > ' + df.at[el, 'T2_pred_1'] for el in range(0, len(df))]
+        df['SRC_T3_FT_input_R2'] = ['' if df.at[el, 'TaggedReaction']=='' else singlestepretrosynthesis.smi_tokenizer(df.at[el, 'TaggedReaction'].split('>>')[0]) + ' > ' + df.at[el, 'T2_pred_2'] for el in range(0, len(df))]
+        df['SRC_T3_FT_input_R3'] = ['' if df.at[el, 'TaggedReaction']=='' else singlestepretrosynthesis.smi_tokenizer(df.at[el, 'TaggedReaction'].split('>>')[0]) + ' > ' + df.at[el, 'T2_pred_3'] for el in range(0, len(df))]
+        del df['rxnstomap']
+        del df['MappedReaction']
+        
+        predictions, probs = singlestepretrosynthesis.Execute_Prediction(
+            SMILES_list         = df['SRC_T3_FT_input_R1'].tolist(),
+            Model_path          = MODEL_T3_FT_PATH, 
+            beam_size           = 3, 
+            batch_size          = 64, 
+            untokenize_output   = True, 
+        )
+        df['T3_FT_pred_R1']      = predictions[0]
+        df['T3_FT_pred_conf_R1'] = probs[0]
+        df.to_pickle(save_pickle_path)
+
+        print('Predicting T3 with tagged reactants, second reagent set...')
+        predictions, probs = singlestepretrosynthesis.Execute_Prediction(
+            SMILES_list        = df['SRC_T3_FT_input_R2'].tolist(),
+            Model_path         = MODEL_T3_FT_PATH, 
+            beam_size          = 3, 
+            batch_size         = 64, 
+            untokenize_output  = True, 
+        )
+        df['T3_FT_pred_R2']      = predictions[0]
+        df['T3_FT_pred_conf_R2'] = probs[0]
+        df.to_pickle(save_pickle_path)
+
+        print('Predicting T3 with tagged reactants, third reagent set...')
+        predictions, probs = singlestepretrosynthesis.Execute_Prediction(
+            SMILES_list       = df['SRC_T3_FT_input_R3'].tolist(),
+            Model_path        = MODEL_T3_FT_PATH, 
+            beam_size         = 3, 
+            batch_size        = 64, 
+            untokenize_output = True, 
+        )
+        df['T3_FT_pred_R3']      = predictions[0]
+        df['T3_FT_pred_conf_R3'] = probs[0]
+        df.to_pickle(save_pickle_path)
+
+
+        df['SRC_smiles_can']    = [singlestepretrosynthesis.canonicalize_smiles(el) for el in df['SRC_smiles']]
+        df['T3_FT_pred_R1_can'] = [singlestepretrosynthesis.canonicalize_smiles(el) for el in df['T3_FT_pred_R1']]
+        df['T3_FT_pred_R2_can'] = [singlestepretrosynthesis.canonicalize_smiles(el) for el in df['T3_FT_pred_R2']]
+        df['T3_FT_pred_R3_can'] = [singlestepretrosynthesis.canonicalize_smiles(el) for el in df['T3_FT_pred_R3']]
+
+        df['T3_FT_pred_R1_acc'] = [True if df.at[el, 'T3_FT_pred_R1_can'] == df.at[el, 'SRC_smiles_can'] else False for el in range(0, len(df))]
+        df['T3_FT_pred_R2_acc'] = [True if df.at[el, 'T3_FT_pred_R2_can'] == df.at[el, 'SRC_smiles_can'] else False for el in range(0, len(df))]
+        df['T3_FT_pred_R3_acc'] = [True if df.at[el, 'T3_FT_pred_R3_can'] == df.at[el, 'SRC_smiles_can'] else False for el in range(0, len(df))]
+
+        df['T3_FT_pred_R1_acc'] = [False if df.at[el, 'T1_pred_1_check2'] == True else df.at[el, 'T3_FT_pred_R1_acc'] for el in range(0, len(df))]
+        df['T3_FT_pred_R2_acc'] = [False if df.at[el, 'T1_pred_1_check2'] == True else df.at[el, 'T3_FT_pred_R2_acc'] for el in range(0, len(df))]
+        df['T3_FT_pred_R3_acc'] = [False if df.at[el, 'T1_pred_1_check2'] == True else df.at[el, 'T3_FT_pred_R3_acc'] for el in range(0, len(df))]
+
+
+        print('\n')
+        print(round(100*len(df[(df['T3_FT_pred_R1_acc'] == True)]), 2) / len(df), '% top-1 T2 reagents')
+        print(round(100*len(df[(df['T3_FT_pred_R2_acc'] == True) | (df['T3_FT_pred_R1_acc'] == True)]), 2) / len(df), '% top-2 T2 reagents')
+        print(round(100*len(df[(df['T3_FT_pred_R3_acc'] == True) | (df['T3_FT_pred_R2_acc'] == True) | (df['T3_FT_pred_R1_acc'] == True)]), 2) / len(df), '% top-3 T2 reagents')
+        print('\n')
+
+        df.to_pickle(save_pickle_path)
+
+    return df 
