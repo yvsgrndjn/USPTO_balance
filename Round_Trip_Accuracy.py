@@ -33,12 +33,12 @@ def main(argv):
         '--T2_Label <T2_input_label>', 
         '--useT3FT <use_T3_FT>', 
         '--pickle_path <save_pickle_path>', 
-        '--Max_SRC_Length <Max_SRC_Length>'
+        '--Max_SRC_Length <Max_SRC_Length>', 
         '--random_state <random_state>'
     ])
     
     try:
-        opts, _ = getopt.getopt(argv,"hs:",["src=","modelT1=","modelT2=","modelT3=","modelT3FT=","T2_Label=","useT3FT=","pickle_path=", "Max_SRC_Length="])
+        opts, _ = getopt.getopt(argv,"hs:",["src=","modelT1=","modelT2=","modelT3=","modelT3FT=","T2_Label=","useT3FT=","pickle_path=", "Max_SRC_Length=", "random_state="])
     except getopt.GetoptError:
         print(HELP)
         sys.exit(2)
