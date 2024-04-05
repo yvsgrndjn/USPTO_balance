@@ -38,7 +38,7 @@ def main(argv):
     ])
     
     try:
-        opts, _ = getopt.getopt(argv,"hs:",["src=","modelT1=","modelT2=","modelT3=","modelT3FT=","T2_Label=","useT3FT=","pickle_path=", "Max_SRC_Length"])
+        opts, _ = getopt.getopt(argv,"hs:",["src=","modelT1=","modelT2=","modelT3=","modelT3FT=","T2_Label=","useT3FT=","pickle_path=", "Max_SRC_Length="])
     except getopt.GetoptError:
         print(HELP)
         sys.exit(2)
