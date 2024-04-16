@@ -1194,6 +1194,7 @@ def append_saved_rxns_into_csv(path_to_folder: str, dataset_name: str, df_templa
     for i in tqdm(range(len(df_templates))):
         template_hash = df_templates.at[i,'template_hash']
         template_line = i
+        retro_template = df_templates.at[i,'retro_templates']
         try:
             df = pd.read_csv(f'{path_to_folder}/results/saved_rxns/{dataset_name}/full_{dataset_name}_{template_hash}_{template_line}.csv')
             df_to_append = pd.DataFrame(columns=['template_line', 'rxns', 'mapped_rxns', 'conf_scores'])
@@ -1201,6 +1202,7 @@ def append_saved_rxns_into_csv(path_to_folder: str, dataset_name: str, df_templa
             df_to_append['mapped_rxns'] = df['mapped_rxns']
             df_to_append['conf_scores'] = df['conf_scores']
             df_to_append['template_line'] = template_line
+            df_to_append['retro_template'] = retro_template
 
             # check in case the last row 'rxns' is a number -> remove it (only needed for old saved_rxns files)
             try:

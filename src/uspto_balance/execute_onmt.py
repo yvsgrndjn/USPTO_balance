@@ -4,7 +4,7 @@ from rdkit.Chem import AllChem
 from rdkit.Chem import DataStructs
 import pandas as pd
 from tqdm import tqdm
-
+import numpy as np
 import os
 import onmt.bin.preprocess as preprocess
 import onmt.bin.train as train
@@ -311,6 +311,118 @@ def evaluate_onmt_model(src_output_path:str, tgt_path:str, path_to_folder:str, d
         invalid_smiles = (test_df['canonical_prediction_{}'.format(i)] == '').sum()
         if True: print('Top-{}: {:.1f}% || Invalid SMILES {:.2f}%'.format(i, correct/total*100,invalid_smiles/total*100))
         else: print('Top-{}: {:.1f}%'.format(i, correct / total * 100))
+
+    return test_df
+
+
+def evaluate_onmt_model_template_dependent(src_output_path:str, tgt_path:str, path_to_folder:str, dataset:str, experiment:str, step:int, beam_size:int =3, data_test_name: str = '', list_template_lines:list = [])-> pd.DataFrame:
+    '''
+    Compares the inference on the test set (src_test.txt) and the ground truth on it (tgt_test.txt) for a given beam-size and model evaluation.
+    Calculates the top-k accuracies for each template and adds them to the output dataframe.
+    Returns (unweighted) average template accuracy from top-1 to top-(beam_size).
+
+    --Inputs
+    src_output_path(str):           Path to the output of the inference of src_test.txt through model {experiment} file that we want to evaluate 
+    tgt_path(str):                  Path to the ground truth tgt_test.txt file against which the output will be compared.
+    path_to_folder(str):            Path to the folder containing the OpenNMT-py folder itself containing all the data concerning the model we want to work with
+    dataset(str):                   Name of the dataset at the origin of the data used to prepare the different splits (ex: USPTO_rand_1M)
+    experiment(str):                Name of the specific experiment done on the splits, usually the name of the model we will be training/using (such as Tx_mmdd)
+    step(int):                      model step of the model to use/used for inference
+    beam_size(int):                 (default 3) number of different predictions the model will make for a given query
+    data_test_name(str):            Name of the data on which inference was run (only used to save the dataframe afterwards)
+
+    --Outputs
+    test_df (pd.DataFrame)          dataframe containing the output for the different beam sizes and the according ground truth as given by the tgt_test.txt file
+                                    is saved under f'{path_to_folder}OpenNMT-py/outputs/{dataset}/{experiment}/eval_df_output_{experiment}_{step}_{data_test_name}.csv'
+    '''
+    test_df = ""
+
+    #src_file = f'{path_to_folder}OpenNMT-py/outputs/{dataset}/{experiment}/output_{experiment}_{step}.txt'
+    src_file = src_output_path
+    #tgt_file = f'{path_to_folder}OpenNMT-py/data/{dataset}/{experiment}/tgt_test.txt' # should it be linked with the src_file? or directly tgt_path?
+    tgt_file = tgt_path
+
+    predictions = [[] for i in range(beam_size)]
+    with open(src_file, 'r') as f:
+        for i, line in enumerate(f.readlines()):
+            predictions[i % beam_size].append(''.join(line.strip().split(' ')))
+    probs = [[] for i in range(beam_size)]
+    with open(src_file + '_log_probs', 'r') as f:
+        for i, line in enumerate(f.readlines()):
+            probs[i % beam_size].append(''.join(line.strip().split(' ')))
+    target = []
+    with open(tgt_file, 'r') as f:
+        for i, line in enumerate(f.readlines()):
+            target.append(''.join(line.strip().split(' ')))
+
+    # stop calculations right away if the predictions and target lengths do not match
+    if len(target) != len(predictions[0]):
+        print('len target: ', len(target))
+        print('len(predictions): ', len(predictions[0]))
+        print('LengthMismatchError: length of predictions and target do not match')
+
+    print('start canonicalizing...')
+    
+    
+    test_df = pd.DataFrame(['' for element in range(0, len(predictions[0]))])#targets)
+    test_df.columns = ['Target']
+
+    for i, preds in tqdm(enumerate(predictions)):
+        test_df['prediction_{}'.format(i + 1)] = preds
+        test_df['canonical_prediction_{}'.format(i + 1)] = test_df['prediction_{}'.format(i + 1)].apply(lambda x: canonicalize_smiles(x))
+    for i, tgt in tqdm(enumerate(target)):
+        test_df['Target'][i] = canonicalize_smiles(tgt)
+    for i, prob in tqdm(enumerate(probs)):
+        test_df['prediction_prob_{}'.format(i + 1)] = prob
+
+    test_df['rank'] = test_df.apply(lambda row: get_rank(row, 'canonical_prediction_', beam_size), axis=1)
+
+    if beam_size == 3:
+        for element in range(0, len(test_df)):
+            test_df['prediction_prob_1'][element] = 10**(float(test_df['prediction_prob_1'][element]))
+            test_df['prediction_prob_2'][element] = 10**(float(test_df['prediction_prob_2'][element]))
+            test_df['prediction_prob_3'][element] = 10**(float(test_df['prediction_prob_3'][element]))
+    elif beam_size == 5:
+        for element in range(0, len(test_df)):
+            test_df['prediction_prob_1'][element] = 10**(float(test_df['prediction_prob_1'][element]))
+            test_df['prediction_prob_2'][element] = 10**(float(test_df['prediction_prob_2'][element]))
+            test_df['prediction_prob_3'][element] = 10**(float(test_df['prediction_prob_3'][element]))
+            test_df['prediction_prob_4'][element] = 10**(float(test_df['prediction_prob_4'][element]))
+            test_df['prediction_prob_5'][element] = 10**(float(test_df['prediction_prob_5'][element]))
+        
+    print(' ')  
+    #print('PROJECT REF:', src_file.split('prediction_')[1].split('_')[0])
+    print(' ')  
+
+    for el in range(1, beam_size+1):
+        test_df['top{}_temp'.format(el)] = 0
+
+    if len(list_template_lines) == len(test_df):
+        test_df['template_line'] = list_template_lines
+    else: 
+        print('LengthError: length of template lines numbers does not match the length of the output')
+        
+    # Group by 'template_line' and calculate correct and invalid_smiles
+    grouped = test_df.groupby('template_line')
+    for name, group in grouped:
+        total = len(group)
+        if total == 0:
+            continue
+        correct = np.zeros(beam_size)
+        invalid_smiles = np.zeros(beam_size)
+        for i in range(1, beam_size+1):
+            correct[i-1] = (group['rank'] == i).sum()
+            invalid_smiles[i-1] = (group['canonical_prediction_{}'.format(i)] == '').sum()
+        accuracy = np.cumsum(correct / total * 100)
+        for i in range(beam_size):
+            test_df.loc[group.index, 'top{}_temp'.format(i+1)] = accuracy[i]
+    
+    test_df.to_csv(f'{path_to_folder}OpenNMT-py/outputs/{dataset}/{experiment}/eval_df_tempdep_output_{experiment}_{step}_on_{data_test_name}.csv')
+    
+    # Calculate the (unweighted) average template accuracy
+    for i in range(1, beam_size+1):
+        average_acc = sum(grouped['top{}_temp'.format(i)].mean())/len(grouped)
+        print('Top-{}: {:.3f}%'.format(i, average_acc))
 
     return test_df
 
