@@ -13,5 +13,5 @@ Module to create similar reactions to a given retrosynthetic reaction template. 
 cd uspto_balance
 conda create uspto_balance
 conda activate uspto_balance
-pip install -e .~~~
+pip install -e . ~~~
 
