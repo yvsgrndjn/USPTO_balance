@@ -9,9 +9,9 @@ Module to create similar reactions to a given retrosynthetic reaction template. 
 
 ## Installing
 ### From GitHub
-'''git clone git@github.com:yvsgrndjn/USPTO_balance.git
+~~~git clone git@github.com:yvsgrndjn/USPTO_balance.git
 cd uspto_balance
 conda create uspto_balance
 conda activate uspto_balance
-pip install -e .'''
+pip install -e .~~~
 
