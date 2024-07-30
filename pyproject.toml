@@ -7,7 +7,7 @@ build-backend = "hatchling.build"
 [project]
 name = "uspto_balance"
 description = "Framework for dataset reaction types equilibration"
-version = '0.0.9'
+version = '0.1.0'
 readme = "README.md"
 requires-python = ">=3.8.16"
 license = { text = "BSD 3-Clause License" }
@@ -20,7 +20,7 @@ dependencies = [
     #"pandas==1.1.5", 
     #"rdkit==2022.3.3", 
 
-    "ttlretro@git+ssh://git@github.com/yvsgrndjn/MultiStepRetrosynthesisTTL#319edba11c9986d18b20c6353489e56aad68883a",
+    "ttlretro@git+ssh://git@github.com/yvsgrndjn/MultiStepRetrosynthesisTTL#0b881f50889957688a9d130077c78bac99457402",
     "opennmt-py@git+https://github.com/reymond-group/OpenNMT-py#71fb9f70e887589941be291b762a8bdad8aa9437",     
     ]
 
