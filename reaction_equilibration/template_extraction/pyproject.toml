@@ -1,0 +1,44 @@
+# https://peps.python.org/pep-0517/
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+# https://peps.python.org/pep-0621/
+[project]
+name = "template_extraction"
+description = "Extract templates from mapped reactions with reaction_utils"
+version = '0.0.1'
+readme = "README.md"
+requires-python = ">=3.8.16"
+license = { text = "BSD 3-Clause License" }
+authors = [
+    { email = "yves.grandjean@unibe.ch", name = "Yves Grandjean" },
+]
+#dynamic = ["version"]
+dependencies = [
+    "rxnutils@git+ssh://git@github.com:MolecularAI/reaction_utils#9e6320b820e6a5517213742ce00a7db8d90fa98b",    
+    ]
+
+[tool.hatch.version]
+#path = "src/uspto_balance/__init__.py"
+source = "vcs"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+only-include = ["src"]
+sources = ["src"]
+
+
+#[project.scripts]
+#balance = "uspto_balance.dataset_equilibration:main_balance"
+
+# extras
+# https://peps.python.org/pep-0621/#dependencies-optional-dependencies
+[project.optional-dependencies]
+test = ["pytest>=6.0"]
+
+[project.urls]
+homepage = "https://github.com/yvsgrndjn/uspto_balance"
+repository = "https://github.com/yvsgrndjn/uspto_balance"

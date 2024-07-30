@@ -1,0 +1,49 @@
+# https://peps.python.org/pep-0517/
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+# https://peps.python.org/pep-0621/
+[project]
+name = "uspto_balance"
+description = "Framework for dataset reaction types equilibration"
+version = '0.1.0'
+readme = "README.md"
+requires-python = ">=3.8.16"
+license = { text = "BSD 3-Clause License" }
+authors = [
+    { email = "yves.grandjean@unibe.ch", name = "Yves Grandjean" },
+]
+#dynamic = ["version"]
+dependencies = [
+   #"numpy==1.19.5", 
+    #"pandas==1.1.5", 
+    #"rdkit==2022.3.3", 
+
+    "ttlretro@git+ssh://git@github.com/yvsgrndjn/MultiStepRetrosynthesisTTL#0b881f50889957688a9d130077c78bac99457402",
+    "opennmt-py@git+https://github.com/reymond-group/OpenNMT-py#71fb9f70e887589941be291b762a8bdad8aa9437",     
+    ]
+
+[tool.hatch.version]
+#path = "src/uspto_balance/__init__.py"
+source = "vcs"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+only-include = ["src"]
+sources = ["src"]
+
+
+[project.scripts]
+balance = "uspto_balance.dataset_equilibration:main_balance"
+
+# extras
+# https://peps.python.org/pep-0621/#dependencies-optional-dependencies
+[project.optional-dependencies]
+test = ["pytest>=6.0"]
+
+[project.urls]
+homepage = "https://github.com/yvsgrndjn/uspto_balance"
+repository = "https://github.com/yvsgrndjn/uspto_balance"
