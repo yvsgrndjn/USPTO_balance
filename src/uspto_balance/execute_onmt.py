@@ -231,6 +231,13 @@ def get_rank(row, base, max_rank):
     return 0
 
 
+def get_rank_RTA(row, base, max_rank):
+    for i in range(1, max_rank+1):
+        if row['{}{}'.format(base, i)]:
+            return i
+    return 0
+
+
 def evaluate_onmt_model(src_output_path:str, tgt_path:str, path_to_folder:str, dataset:str, experiment:str, step:int, beam_size:int =3, data_test_name: str = '')-> pd.DataFrame:
     '''
     Compares the inference on the test set (src_test.txt) and the ground truth on it (tgt_test.txt) for a given beam-size and model evaluation.
@@ -425,124 +432,6 @@ def evaluate_onmt_model_template_dependent(src_output_path:str, tgt_path:str, pa
         print('Top-{}: {:.3f}%'.format(i, average_acc))
 
     return test_df
-
-
-#def calculate_round_trip_accuracy_TTL(
-#    src_path:str, tgt_path:str, save_path:str, T1_path:str, T2_path:str, T3_path:str, T3_FT_path:str,
-#    mark_count:int=3, neighbors:bool=True, Random_Tagging:bool=True,
-#    AutoTagging:bool=True, AutoTagging_Beam_Size:int=50, Substructure_Tagging:bool=True,
-#    Retro_USPTO:bool=True, Std_Fwd_USPTO:bool=False, Fwd_USPTO_Reag_Pred:bool=True,
-#    Fwd_USPTO_Tag_React:bool=False, USPTO_Reag_Beam_Size:int=3, confidence_filter:bool=True,
-#    Retro_beam_size:int=5, mark_locations_filter:int=1, log:bool=True, RTA_test_mode:bool=True
-#    ):
-#    '''
-#    src_path(str):              path leading to the input to round trip accuracy.
-#    tgt_path(str):              path leading to the ground truth of the round trip accuracy. 
-#    save_path(str):             path_to/name_of_file to save the pkl results of the RTA
-#    T1_path(str):               path to the single-step retrosynthesis model (T1)
-#    T2_path(str):               path to the reagent prediction model (T2)
-#    T3_path(str):               path to the forward validation model (T3)
-#    T3_FT_path(str):            path to the forward validation model with tagged reactants as input (T3_FT)
-#    mark_count(int)             (default 2)
-#    neighbors(bool)             (default True)
-#    Random_Tagging(bool)        (default True)
-#    AutoTagging(bool)           (default False)
-#    AutoTagging_Beam_Size(int)  (default 100)
-#    Substructure_Tagging(bool)  (default True)
-#    Retro_USPTO(bool)           (default True)
-#    Std_Fwd_USPTO(bool)         (default False)
-#    Fwd_USPTO_Reag_Pred(bool)   (default True)
-#    Fwd_USPTO_Tag_React(bool)   (default False)
-#    USPTO_Reag_Beam_Size(int)   (default 3)
-#    confidence_filter(bool)     (default True)
-#    Retro_beam_size(int)        (default 5)
-#    mark_locations_filter(int)  (default 1)
-#    log(bool)                   (default True)
-#    RTA_test_mode(bool)         (default True)
-#    '''
-#
-#    #src_path = './data/roundtrip_eval/src_test.txt'
-#    with open(src_path, 'r') as f:
-#        src = f.readlines()
-#    src = [el.strip('\n') for el in src]
-#
-#    #tgt_path = './data/T1_Fwd/tgt_test.txt'
-#    with open(tgt_path, 'r') as f:
-#        smiles_list = f.readlines()
-#    smiles_list = [el.strip('\n') for el in smiles_list]
-#    smiles_list = [el.replace(' ','') for el in smiles_list]
-#
-#    #check first that both input files are of the same length (they should correspond)
-#    if len(src) != len(smiles_list):
-#        print('SMILES and tagged SMILES do not correspond, they must be of same length')
-#
-#    src_tag = []
-#    targets_acquired = []
-#    topk_reag = []  
-#
-#    singlestepretrosynthesis.USPTO_T1_path = T1_path
-#    singlestepretrosynthesis.USPTO_T2_path = T2_path
-#    singlestepretrosynthesis.USPTO_T3_path = T3_path
-#    singlestepretrosynthesis.USPTO_T3_FT_path = T3_FT_path
-#    
-#    #check that there is a tmp folder available to store results of the execute_prediction function to avoid errors
-#
-#    for ind in tqdm(range(0,len(src))):
-#        SMILES = smiles_list[ind]
-#        RTA_input_file = [src[ind]]
-#        df_filtered, backup = singlestepretrosynthesis.Execute_Retro_Prediction(
-#            SMILES, 
-#            mark_count=mark_count,
-#            neighbors=neighbors,
-#            Random_Tagging=Random_Tagging,
-#            AutoTagging=AutoTagging,
-#            AutoTagging_Beam_Size=AutoTagging_Beam_Size,
-#            Substructure_Tagging=Substructure_Tagging,
-#            Retro_USPTO=Retro_USPTO,
-#            #Std_Fwd_USPTO=Std_Fwd_USPTO,
-#            Fwd_USPTO_Reag_Pred=Fwd_USPTO_Reag_Pred,
-#            Fwd_USPTO_Tag_React = Fwd_USPTO_Tag_React,
-#            USPTO_Reag_Beam_Size=USPTO_Reag_Beam_Size,
-#            confidence_filter=confidence_filter,
-#            Retro_beam_size=Retro_beam_size,
-#            mark_locations_filter=mark_locations_filter,
-#            log=log,
-#            #RTA_test_mode = RTA_test_mode,
-#            #RTA_input_file = RTA_input_file
-#            )
-#        src_tag.append(src[ind].count('!'))
-#
-#        return df_filtered
-#
-#        if len(df_filtered) > 0:
-#            #try calculating the rank of each line
-#            df_filtered['rank'] = df_filtered.apply(lambda row: get_rank(row, 'canonical_prediction_', USPTO_Reag_Beam_Size), axis=1)
-#            #return df_filtered
-#            targets_acquired.append(1)
-#            topk_reag.append(df_filtered['Reag_rank'].min())
-#        else:
-#            targets_acquired.append(0)
-#            topk_reag.append(0)
-#
-#        #save once every 100 molecules
-#        if ind % 5 == 0 or ind == len(src):
-#            df_RTA_results = pd.DataFrame(columns=['Tags','Target_acquired','topk_reag'])
-#            df_RTA_results['Tags'] = src_tag
-#            df_RTA_results['Target_acquired'] = targets_acquired
-#            df_RTA_results['topk_reag'] = topk_reag
-#
-#            with open('RTA_' + str(save_path) + '.pkl', 'wb') as f:
-#                pickle.dump(df_RTA_results, f)
-#
-#    RTA = sum(targets_acquired)/len(src)
-#    top1_k = sum([1 for el in topk_reag if el == 1])/len(src)
-#    top2_k = sum([1 for el in topk_reag if el <= 2])/len(src)
-#    top3_k = sum([1 for el in topk_reag if el <= 3])/len(src)
-#
-#    print('RTA: ', RTA, '\n',
-#        'top1_k: ', top1_k, '\n',
-#        'top2_k: ', top2_k, '\n',
-#        'top3_k: ', top3_k, '\n')
 
 
 def RoundTrip(
@@ -796,3 +685,40 @@ def RoundTrip(
         df.to_pickle(save_pickle_path)
 
     return df 
+
+
+def RoundTrip_template_dependent(
+    df_result_RTA: pd.DataFrame,
+    list_template_lines: list,
+    beam_size: int = 3
+    ):
+    '''
+    ...
+    '''
+    if len(list_template_lines) == len(df_result_RTA):
+        df_result_RTA['template_line'] = list_template_lines
+    else: 
+        print('LengthError: length of template lines numbers does not match the length of the output')
+
+    # Group by 'template_line' and calculate correct and invalid_smiles
+    grouped = df_result_RTA.groupby('template_line')
+
+    for name, group in grouped:
+        total = len(group)
+        if total == 0:
+            continue
+        correct = np.zeros(beam_size)
+        #invalid_smiles = np.zeros(beam_size)
+        for i in range(1, beam_size+1):
+            correct[i-1] = (group['rank'] == i).sum()
+            #invalid_smiles[i-1] = (group['canonical_prediction_{}'.format(i)] == '').sum()
+        accuracy = np.cumsum(correct / total * 100)
+        for i in range(beam_size):
+            df_result_RTA.loc[group.index, 'top{}_temp'.format(i+1)] = accuracy[i]
+    
+    #df_result_RTA.to_pickle(save_path)
+
+    # Calculate the (unweighted) average template accuracy
+    for i in range(1, beam_size+1):
+        average_acc = sum(grouped['top{}_temp'.format(i)].mean())/len(grouped)
+        print('Top-{}: {:.3f}%'.format(i, average_acc))

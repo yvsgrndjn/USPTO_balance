@@ -1,5 +1,6 @@
 import os
 import pandas as pd
+import numpy as np
 from rdkit import Chem
 from rdkit.Chem import AllChem
 import multiprocessing
@@ -1340,6 +1341,28 @@ def subset_n_random_reactions_per_template(full_df_conf, target, random_seed=42)
             df_concat = pd.concat([df_concat, df.iloc[ind]])
         else: # cannot be zero from the full_df_conf['template_line'].unique() list
             df_concat = pd.concat([df_concat, df])
+    return df_concat
+
+def subset_n_random_reactions_per_template_opti(full_df_conf, target, random_seed=42): # TO BE TESTED
+    np.random.seed(random_seed)  # Set the random seed for reproducibility
+    df_concat = pd.DataFrame()
+    
+    # Iterate over each unique 'template_line'
+    for template_line in tqdm(full_df_conf['template_line'].unique()):
+        # Filter the dataframe by the current 'template_line'
+        df = full_df_conf[full_df_conf['template_line'] == template_line]
+        len_df = len(df)
+        
+        # Select 'target' random samples if the dataframe length is greater or equal to target
+        if len_df >= target:
+            sampled_df = df.sample(n=target, random_state=random_seed)
+        else:
+            # Take all rows if the length is less than target
+            sampled_df = df
+        
+        # Concatenate the sampled dataframe
+        df_concat = pd.concat([df_concat, sampled_df], ignore_index=True)
+    
     return df_concat
 
 # Functions related to split the models and save the txt files
