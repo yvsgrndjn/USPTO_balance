@@ -16,7 +16,7 @@ authors = [
 ]
 #dynamic = ["version"]
 dependencies = [
-    "reaction_utils@git+ssh://git@github.com:yvsgrndjn/reaction_utils#9e6320b820e6a5517213742ce00a7db8d90fa98b",    
+    "reaction_utils@git+ssh://git@github.com/yvsgrndjn/reaction_utils.git@9e6320b820e6a5517213742ce00a7db8d90fa98b",    
     ]
 
 [tool.hatch.version]
