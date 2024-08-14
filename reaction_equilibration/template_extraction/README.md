@@ -17,7 +17,7 @@ To perform calculations from a jupyter notebook for example:
 from template_extraction.pipeline import process_and_extract_templates
 
 input_csv_path = './tests/uspto_Thakkar_sample_1000_mapped_smiles.csv'
-output_csv_path = './tests/uspto_Thakkar_sample_1000_r0r1.csv
+output_csv_path = './tests/uspto_Thakkar_sample_1000_r0r1.csv'
 
 process_and_extract_templates(input_csv_path, output_csv_path)
 ```
