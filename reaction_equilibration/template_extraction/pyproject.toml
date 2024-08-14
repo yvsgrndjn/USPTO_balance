@@ -16,6 +16,8 @@ authors = [
 ]
 #dynamic = ["version"]
 dependencies = [
+    'pandas',
+    'rdkit',
     'numpy < 2.0',   
     'reaction-utils >= 1.5.0',    
     ]
