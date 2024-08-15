@@ -1,4 +1,5 @@
 import pandas as pd
+import multiprocessing
 from .reaction_formatter import ReactionFormatterForTemplateExtraction
 from .template_extractor import TemplateExtractor
 
@@ -11,8 +12,11 @@ def process_and_extract_templates(input_csv_path, output_csv_path):
     results = processor.format_all_reactions()
     formatted_df = pd.DataFrame(results, columns=['MAPPED_SMILES', 'UNMAPPED_PRODUCT_SMILES'])
 
+    # Determine the number of CPUs to use (max CPUs - 2)
+    max_cpus = max(1, multiprocessing.cpu_count() - 2)
+    
     # Extract templates for both radius 0 and radius 1
-    extractor = TemplateExtractor(results)
+    extractor = TemplateExtractor(results, n_jobs=max_cpus)
     extracted_r0_templates = extractor.extract_r0_templates_for_all()
     extracted_r1_templates = extractor.extract_r1_templates_for_all()
 
