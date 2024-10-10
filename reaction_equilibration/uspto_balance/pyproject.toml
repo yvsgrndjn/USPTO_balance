@@ -37,7 +37,7 @@ sources = ["src"]
 
 
 [project.scripts]
-balance = "uspto_balance.dataset_equilibration:main_balance"
+balance = "uspto_balance.equilibrate:main"
 
 # extras
 # https://peps.python.org/pep-0621/#dependencies-optional-dependencies

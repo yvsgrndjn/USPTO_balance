@@ -20,10 +20,7 @@ dependencies = [
     'rdkit',
     'numpy < 2.0',   
     'reaction-utils >= 1.5.0',
-    'joblib',
-
-    "ttlretro@git+ssh://git@github.com/yvsgrndjn/MultiStepRetrosynthesisTTL#0b881f50889957688a9d130077c78bac99457402",
-    "opennmt-py@git+https://github.com/reymond-group/OpenNMT-py#71fb9f70e887589941be291b762a8bdad8aa9437", 
+    'joblib', 
     ]
 
 [tool.hatch.version]
