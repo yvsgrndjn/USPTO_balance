@@ -3,7 +3,7 @@ import pandas as pd
 from rdkit import Chem
 from rdkit.Chem import AllChem
 from itertools import chain
-from dataset_class import Dataset
+from uspto_balance.dataset_class import Dataset
 from ttlretro.single_step_retro import SingleStepRetrosynthesis
 singlestepretrosynthesis = SingleStepRetrosynthesis()
 

@@ -12,7 +12,7 @@ Module to create similar reactions to a given retrosynthetic reaction template. 
 ~~~
 git clone git@github.com:yvsgrndjn/USPTO_balance.git
 cd uspto_balance
-conda create uspto_balance
+conda create -n uspto_balance python=3.8.16
 conda activate uspto_balance
 pip install -e .
 ~~~
