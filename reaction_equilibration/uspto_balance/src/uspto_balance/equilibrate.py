@@ -97,7 +97,7 @@ class Equilibrate:
 
             # Initialize the class to match molecules and apply templates
             create_fictive_rxns = FindMatchesApplyTemplateFormatReactions(self.dataset_name, 
-                                                                          dataset_version, 
+                                                                          self.dataset_version, 
                                                                           self.retro_reac, 
                                                                           self.retro_template, 
                                                                           self.template_line, 
