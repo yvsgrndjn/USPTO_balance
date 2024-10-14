@@ -11,12 +11,6 @@ class ValidateReactionsWithTTL:
         self.T2_model_path        = T2_model_path
         self.T3_model_path        = T3_model_path
         
-        self.tok_rxns_list        = []
-        self.T2_preds             = []
-        self.rxns_format_T3_tok   = []
-        self.T3_preds             = []
-        self.mapped_reactions     = []
-        self.T3_preds             = []
 
     def tokenize_rxn_list(self, rxns_list: list):
         '''

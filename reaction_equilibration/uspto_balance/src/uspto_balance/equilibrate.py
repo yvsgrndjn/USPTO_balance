@@ -11,23 +11,24 @@ from uspto_balance.validate_reactions_TTL import ValidateReactionsWithTTL
 print('Imports done')
 
 class Equilibrate:
-    def __init__(self, dataset_name:str, retro_reac:str, retro_template:str, template_line:int, template_frequency:int, frequency_target:int, T2_model_path:str, T3_model_path:str):
+    def __init__(self, dataset_name:str, retro_reac:str, retro_template:str, template_line:int, template_frequency:int, frequency_target:int, T2_model_path:str, T3_model_path:str, run_from_path:str='./'):
         self.dataset_name       = dataset_name
         self.retro_reac         = retro_reac
         self.retro_template     = retro_template
         self.template_line      = template_line
-        self.template_frequency = template_frequency
+        self.initial_template_frequency = template_frequency
         self.frequency_target   = frequency_target
         self.T2_model_path      = T2_model_path
         self.T3_model_path      = T3_model_path
+        self.folder_path        = run_from_path
 
-        self.stats_file_path    = f'./results/saved_rxns/{self.dataset_name}/full_{self.dataset_name}_stats_template_{template_line}.csv'
-        self.results_csv_path   = f'./results/saved_rxns/{self.dataset_name}/full_{self.dataset_name}_template_{template_line}.csv'
+        self.stats_file_path    = f'{self.folder_path}results/saved_rxns/{self.dataset_name}/full_{self.dataset_name}_stats_template_{template_line}.csv'
+        self.results_csv_path   = f'{self.folder_path}results/saved_rxns/{self.dataset_name}/full_{self.dataset_name}_template_{template_line}.csv'
         self.counter            = 0
         self.num_matches        = 0
         self.num_created_rxns   = 0
-        self.val_rxns           = 0
-        self.val_conf_rxns      = 0
+        self.num_val_rxns       = 0
+        self.num_val_conf_rxns  = 0
         self.time_elapsed       = 0
         self.initial_template_frequency = 0
         self.cpu_type           = os.popen('lscpu').read().split('\n')[4].split(':')[1].strip()
@@ -41,10 +42,8 @@ class Equilibrate:
             self.num_val_rxns               = df_checkpoint.at[0, 'validated reactions']
             self.num_val_conf_rxns          = df_checkpoint.at[0, 'validated and confident reactions']
             self.time_elapsed               = df_checkpoint.at[0, 'time elapsed']
-            self.initial_template_frequency = self.template_frequency
-            self.template_frequency         = self.val_conf_rxns
-            num_added_rxns_so_far           = self.val_conf_rxns - initial_template_frequency
-            print(f'Continue enrichment from fraction {self.counter} with actual {self.template_frequency} template frequency (out of {self.frequency_target}), starting from originally {initial_template_frequency} reactions')
+            num_added_rxns_so_far           = self.num_val_conf_rxns - self.initial_template_frequency
+            print(f'Continue enrichment from fraction {self.counter} with so far {self.num_val_conf_rxns} validated and confident reactions (out of target {self.frequency_target}), starting from originally {self.initial_template_frequency} reactions')
         except FileNotFoundError:
             return
 
@@ -71,6 +70,7 @@ class Equilibrate:
 
     def update_checkpoint(self):
         time_elapsed = time.time() - self.start
+        self.dataset_version = self.get_dataset_version()
         fraction = self.index_list.index(self.dataset_version)
         df = pd.DataFrame({'template line'                  :self.template_line,
                         'dataset fractions'                 : [fraction],
@@ -80,7 +80,8 @@ class Equilibrate:
                         'time elapsed'                      : [time_elapsed],
                         'cpu type'                          : self.cpu_type})
         df.to_csv(self.stats_file_path, index=False)
-    
+        self.stats = df
+
     def process(self):
         # Load checkpoint data if it exists
         self.get_checkpoint_info()
@@ -90,7 +91,7 @@ class Equilibrate:
         
         self.start = time.time()
 
-        while self.template_frequency < self.frequency_target and self.counter < 1000:
+        while self.num_val_conf_rxns < self.frequency_target and self.counter < 1000:
             print(f'Iteration {self.counter}/999')        
             
             self.dataset_version = self.get_dataset_version()
@@ -101,7 +102,7 @@ class Equilibrate:
                                                                           self.retro_reac, 
                                                                           self.retro_template, 
                                                                           self.template_line, 
-                                                                          './')
+                                                                          self.folder_path)
             # create the fictive reactions and count them
             fictive_rxns = create_fictive_rxns.main()
             self.num_created_rxns += len(fictive_rxns)
@@ -119,13 +120,13 @@ class Equilibrate:
 
             # update counters
             self.counter +=1
-            self.template_frequency += self.num_val_conf_rxns
 
             # update checkpoint file
             self.update_checkpoint()
         
-        print(f'Enrichment finished with counter {self.counter}/999, initial {self.initial_template_frequency} reactions were enriched to {self.template_frequency} for retro_reac: {self.retro_reac} and retro_template: {self.retro_template}')
-            
+        print(f'Enrichment finished with counter {self.counter}/999, initial {self.initial_template_frequency} reactions were enriched to {self.num_val_conf_rxns} for retro_reac: {self.retro_reac} and retro_template: {self.retro_template}')
+        self.results = pd.read_csv(self.results_csv_path)
+
 def main():
     # Parse command line arguments
     parser = argparse.ArgumentParser(description='Run Equilibrate class with a YAML config file.')
