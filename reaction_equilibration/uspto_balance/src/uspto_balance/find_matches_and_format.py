@@ -139,9 +139,9 @@ class FindMatchesApplyTemplateFormatReactions:
         except ValueError:
             pass
 
-        fictive_rxns_list = self.remove_incomplete_rxns(fictive_rxns_list)
+        self.fictive_rxns_list = self.remove_incomplete_rxns(fictive_rxns_list)
 
-        return fictive_rxns_list
+        return self.fictive_rxns_list
 
 
             
