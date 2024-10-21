@@ -147,7 +147,8 @@ def main():
         template_frequency=config['template_frequency'],
         frequency_target=config['frequency_target'],
         T2_model_path=config['T2_model_path'],
-        T3_model_path=config['T3_model_path']
+        T3_model_path=config['T3_model_path'],
+        run_from_path=config['folder_path']
     )
 
     # Call the process method to start
