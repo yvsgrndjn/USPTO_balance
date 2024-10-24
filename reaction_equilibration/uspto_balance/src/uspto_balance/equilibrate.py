@@ -5,8 +5,8 @@ import random
 import argparse
 import pandas as pd
 
-from uspto_balance.find_matches_and_format import FindMatchesApplyTemplateFormatReactions
-from uspto_balance.validate_reactions_TTL import ValidateReactionsWithTTL
+from src.uspto_balance.find_matches_and_format import FindMatchesApplyTemplateFormatReactions
+from src.uspto_balance.validate_reactions_TTL import ValidateReactionsWithTTL
 
 print('Imports done')
 

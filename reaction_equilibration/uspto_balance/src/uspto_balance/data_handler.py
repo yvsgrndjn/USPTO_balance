@@ -1,5 +1,5 @@
 import pandas as pd
-from src.utils.helper_functions import find_input_type
+from src.uspto_balance.utils.helper_functions import find_input_type
 
 class DataHandler:
     def __init__(self, file_path):
