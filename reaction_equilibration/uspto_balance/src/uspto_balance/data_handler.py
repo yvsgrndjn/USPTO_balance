@@ -2,10 +2,16 @@ import pandas as pd
 from src.uspto_balance.utils.helper_functions import find_input_type
 
 class DataHandler:
-    def __init__(self, file_path):
-        self.file_path  = file_path
-        self.datatype   = find_input_type(file_path)
-
+    def __init__(self, data=None, file_path= None):
+        
+        self.data = None
+        if data is not None:
+            self.data = data
+        elif file_path:
+            self.file_path = file_path
+            self.datatype = find_input_type(file_path)
+            self.data = self.load_data()
+    
     def load_data(self): 
         if self.datatype == 'csv':
             return self._load_csv_data()
@@ -50,3 +56,9 @@ class DataHandler:
         
         except Exception as e:
             raise ValueError('Error loading pkl file:', e)
+    
+    def __len__(self):
+        """Return the number of rows in the dataset."""
+        if self.data is not None:
+            return len(self.data)
+        return 0

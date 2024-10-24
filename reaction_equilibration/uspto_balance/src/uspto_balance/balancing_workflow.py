@@ -46,31 +46,6 @@ def read_config(config_file):
     return config
 
 
-def save_created_files_to_temp_file(temp_path: str, temp_name: str, temp_list: list):
-    '''
-    Saves the paths of the created files in a temp file to delete them once they are no longer needed at the end of the dataset_version iteration
-
-    --Inputs--
-    temp_path (str):    path to the temp folder
-    temp_name (str):    name of the temp file
-    temp_list (list):   list of paths to the created files
-
-    --Returns--
-    None, but creates a txt file containing the paths of the created files that will be deleted at the end of the dataset_version iteration
-    '''
-    # Create the folder if it does not exist
-    if not os.path.exists(temp_path):
-        os.makedirs(temp_path)
-               
-    # Create the temp file for the given dataset_name, and template_hash_version
-    if not os.path.exists(f'{temp_path}/{temp_name}.txt'):
-        with open(f'{temp_path}/{temp_name}.txt', 'w') as f:
-            for item in temp_list:
-                f.write(item + '\n')
-    else:
-        with open(f'{temp_path}/{temp_name}.txt', 'a') as f:
-            for item in temp_list:
-                f.write(item + '\n')
 
 
 
@@ -86,12 +61,6 @@ def smiles_to_mol(smi: str) -> Chem.Mol:
     '''
     mol = Chem.MolFromSmiles(smi)
     return mol
-
-
-
-
-
-
 
 
 def apply_rxn_template_on_mols_list(dataset_mol:list, rxn_template:str) -> list:
@@ -149,39 +118,6 @@ def format_reaction(reactants_tuple: tuple, smi : str) -> list:
 
 
 
-
-#E_part3_framework functions ------------------------------
-
-
-def load_rxns(dataset_name: str, dataset_version: str, template_hash_version: str, retro_reac: str, retro_template: str, rxns_number: int = 10000):
-    '''
-    Loads the fictive reactions ('rxns_list') that were created in D_part2_framework.py of the dataset subset matching the retro_reac pattern
-    and applying reaction templates 'retro_template' to them.
-
-    --Inputs--
-    dataset_name (str):           Name of the dataset (str) ex: GDB13S, USPTO. Prerequisite (for the module, not the function): The dataset divided in 100 different
-                                    files in the format {dataset_name}_i.txt for i from 1 to 1000 must be present in the folder dataset_balance/data/
-    dataset_version (str):        Version of the dataset (str) being any integer from 1 to 1000.
-    template_hash_version (str):  Allows to trace back the template to the templates dataframe, it is constructed as follows. 
-    retro_reac (str):             SMARTS pattern of the substructure to match
-    retro_template (str):         Reaction template in SMART format
-    rxns_number:                  Number of reactions to load (default = 10000)
-    '''
-    try:
-        folder_path = f'./results/created_rxns/{dataset_name}'
-        name =         f'{dataset_name}_sub_{dataset_version}_{template_hash_version}'
-
-        with open(f'{folder_path}/{name}.txt', 'r') as f:
-            rxns_list = []
-            rxns_list = list(islice(f, rxns_number))
-            rxns_list = [rxns_list[i].split('\n')[0] for i in range(len(rxns_list))]
-        return rxns_list
-
-    except FileNotFoundError:
-        print(f'No reactions found for retro_reac: {retro_reac} and retro_template: {retro_template}')
-        return []
-
-
 def remove_incomplete_rxns(rxns_list:list):
     '''
     Removes reactions that have no reactant (= template application on product did not work out)
@@ -214,24 +150,6 @@ def tokenize_rxn_list(rxns_list: list):
     return tok_rxns_list
 
 
-def run_T2_predictions(tok_rxns_list: list, Model_path: str, beam_size: int = 1, batch_size: int = 64, untokenize_output:bool = True):
-    '''
-    Takes a SMILES list (list of tokenized reactions in the format reactants>>product) and predicts the needed reagents for the reaction to take place.
-    Gives back the list of reagents, which is same length as the input SMILES list.
-    --Inputs--
-    tok_rxns_list (list(str)):   List of tokenized reactions in the format reactants>>product
-    Model_path (str):             Path to the model to use for prediction
-    beam_size (int):              Beam size to use for prediction (default = 1)
-    batch_size (int):             Batch size to use for prediction (default = 64)
-    untokenize_output (bool):     Whether to untokenize the output or not (default = True)
-
-    --Returns--
-    preds_T2 (list(str)):         List of predicted reagents for each of the input reactions of 'tok_rxns_list'
-    '''
-    [preds_T2, probs_T2] = singlestepretrosynthesis.Execute_Prediction(tok_rxns_list, Model_path, beam_size, batch_size, untokenize_output)
-    
-    return preds_T2[0]
-
 
 def remove_unmapped_rxns(MappedReactions: list, preds_T2: list, rxns_list: list):
     '''
@@ -255,48 +173,6 @@ def remove_unmapped_rxns(MappedReactions: list, preds_T2: list, rxns_list: list)
         del rxns_list[index]
     return MappedReactions, preds_T2, rxns_list
 
-
-def prepare_rxns_T2_for_T3(rxns_list: list, preds_T2: list):
-    '''
-    From the rxns_list and the predicted reagents for each reaction, returns a list of tokenized reactions
-    in an appropriate format to use as input to forward tag T3
-    reactants tagged "!" > reagents (tokenized)
-
-    --Inputs--
-    rxns_list (list(str)):              List of reactions in the format reactants>>product
-    preds_T2 (list(str)):               List of predicted reagents for each reaction in 'rxns_list'
-
-    --Returns--
-    reconstructed_rxns_tok (list(str)): List of tokenized reactions in the format: reactants(tagged with "!") > reagents (tokenized) ready to be input into forward-tag Forward validation (T3-FT)
-    '''
-    MappedReactions = list(singlestepretrosynthesis.rxn_mapper_batch.map_reactions(rxns_list))
-    MappedReactions, preds_T2, rxns_list = remove_unmapped_rxns(MappedReactions, preds_T2, rxns_list)
-    taggedreactants = [singlestepretrosynthesis.rxn_mark_center.TagMappedReactionCenter(MappedReactions[i], alternative_marking = True, tag_reactants = True).split('>>')[0] for i in range(len(MappedReactions))]
-    reconstructed_rxns = [taggedreactants[i] + '>' + preds_T2[i] for i in range(len(preds_T2))]
-    reconstructed_rxns_tok = [singlestepretrosynthesis.smi_tokenizer(i) for i in reconstructed_rxns]
-    return reconstructed_rxns_tok
-
-
-def run_T3_predictions(rxns_T2_to_T3_tok: list, Model_path: str, beam_size: int = 3, batch_size: int = 64, untokenize_output:bool = True):
-    '''
-    Takes a SMILES list (list of tokenized reactions in the format reactants>reagents) and performs forward prediction on them.
-    Gives back the list of predicted products that has the same length as the input SMILES list.  
-
-    --Inputs--
-    rxns_T2_to_T3_tok (list(str)):   List of tokenized reactions in the format: reactants(tagged with "!") >reagents (tokenized)
-    Model_path (str):                Path to the model to use for prediction (here forward validation, preferably with forward-tag)
-    beam_size (int):                 Beam size to use for prediction (default = 3)
-    batch_size (int):                Batch size to use for prediction (default = 64)
-    untokenize_output (bool):        Whether to untokenize the output or not (default = True)
-
-    --Returns--
-    preds_T3[0] (list(str)):            List of predicted products for each of the input reactions of 'rxns_T2_to_T3_tok'
-    probs_T3[0] (list(float)):          List of confidence scores for each of the predicted products of 'preds_T3', in [0,1]
-    '''
-    [preds_T3, probs_T3] = singlestepretrosynthesis.Execute_Prediction(rxns_T2_to_T3_tok, Model_path, beam_size, batch_size, untokenize_output)
-    return preds_T3[0], probs_T3[0]
-
-
 def find_ind_match_T3_preds_ref(preds_T3: list, rxns_list: list):
     '''
     Performs forward validation on the predictions of T3 and the original reactions list (used as ground truth). Returns the matches between the two lists.
@@ -317,7 +193,6 @@ def find_ind_match_T3_preds_ref(preds_T3: list, rxns_list: list):
     preds_ref = [singlestepretrosynthesis.canonicalize_smiles(rxns_list[i].split('>>')[1]) for i in range(len(rxns_list))] 
     ind_match = [i for i in range(len(preds_T3)) if preds_T3[i] == preds_ref[i]]
     return ind_match
-
 
 def add_reagents_to_rxns_list(rxns_list, preds_T2, ind_match):
     '''
@@ -857,7 +732,7 @@ def find_reaction_template_of_hash(fulltemplate_df:pd.DataFrame, template):
     return fulltemplate_df[fulltemplate_df['template_hash'] == template]['retro_template'].value_counts().keys().tolist()[0]
 
 
-def load_stats_csv_into_df(path_to_folder: str, dataset_name: str, df_templates: pd.DataFrame):
+def load_stats_csv_into_df_old(path_to_folder: str, dataset_name: str, df_templates: pd.DataFrame):
     '''
     Takes the overall statistics of the enrichment process (dataset_equilibration performed on several templates) and loads them into a dataframe summarizing the results for each template hash.
 
@@ -883,6 +758,30 @@ def load_stats_csv_into_df(path_to_folder: str, dataset_name: str, df_templates:
             df_template_stats = pd.concat([df_template_stats, dftemp], axis = 0)
     return df_template_stats
 
+def load_stats_csv_into_df(path_to_folder: str, dataset_name: str, df_templates: pd.DataFrame):
+    '''
+    Takes the overall statistics of the enrichment process (dataset_equilibration performed on several templates) and loads them into a dataframe summarizing the results for each template hash.
+
+    --Inputs--
+    path_to_folder (str):           path to the folder containing the csv files with the statistics of the enrichment process, typically: f'./results/saved_rxns/{dataset_name}/'
+    dataset_name (str):             name of the dataset (str) ex: GDB13S, USPTO
+    df_templates (pd.DataFrame):    dataframe containing the information on the templates to be enriched 
+    '''
+    df_template_stats = pd.DataFrame(columns=['template line', 'dataset fractions', 'molecules match', 'created_rxns', 'validated reactions', 'validated and confident reactions', 'time elapsed', 'cpu type'])
+    df_template_stats.set_index('template line', inplace=True)
+
+    for template_line in tqdm(range(len(df_templates))):
+        try:
+            name_saved = f'full_{dataset_name}_stats_template_{template_line}.csv'
+            dftemp = pd.read_csv(f'{path_to_folder}{name_saved}')
+            dftemp.set_index('template line', inplace=True)
+            df_template_stats = pd.concat([df_template_stats, dftemp], axis = 0)
+        except FileNotFoundError: 
+            # Adds empty lines for the templates that did not have any results
+            dftemp = pd.DataFrame({'template line': [template_line]})
+            dftemp.set_index('template line', inplace=True)
+            df_template_stats = pd.concat([df_template_stats, dftemp], axis = 0)
+    return df_template_stats
 
 def find_nan_stats_csv(df_template_stats: pd.DataFrame):
     '''
@@ -906,7 +805,7 @@ def find_nan_stats_csv(df_template_stats: pd.DataFrame):
 
 def stats_preprocessing(df: pd.DataFrame):
     """
-    Remove all the data that we won't use for the statistical analysis, return a bool list with True values at the indices to be kept for further analysis
+    Return indices without all the data that we won't use for the statistical analysis, return a bool list with True values at the indices to be kept for further analysis
     """
     nan_values = [ (math.isnan(el)) for el in df['dataset fractions'] ]
     timelimit = (df['dataset fractions']< 1000) & (df['validated and confident reactions'] < 5000)
