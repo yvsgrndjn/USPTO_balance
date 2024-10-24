@@ -73,8 +73,6 @@ def save_created_files_to_temp_file(temp_path: str, temp_name: str, temp_list: l
                 f.write(item + '\n')
 
 
-#C_part1_framework specific functions ------------------------------
-
 
 def smiles_to_mol(smi: str) -> Chem.Mol:
     '''
@@ -90,206 +88,9 @@ def smiles_to_mol(smi: str) -> Chem.Mol:
     return mol
 
 
-def do_subsets_exist_already(dataset_name: str, dataset_version: str, template_hash_version: str) -> bool:
-    '''
-    Checks if the subsets containing the SMILES/mol-format molecules containing the 'retro_reac' substructure already exist (= have already been extracted).
-
-    --Inputs--
-    dataset_name (str):             name of the dataset (str) ex: GDB13S, USPTO. Prerequisite (for the module, not the function): The dataset divided in 100 different
-                                    files in the format {dataset_name}_i.txt for i from 1 to 100 must be present in the folder dataset_balance/data/
-    dataset_version (str):          version of the dataset (str) being any integer from 1 to 100
-    template_hash_version (str):    Allows to trace back the template to the templates dataframe, it is constructed as follows.
-                                    template_hash_version = f"{template_hash}_{template_line}"
-
-    --Returns--
-    (bool) True if they exist, False otherwise
-    '''
-    # The paths and names of the files and folders are created in the same way throughout the whole module. 
-    folder_path     = f'./results/datasets/{dataset_name}'
-    folder_path_mol = f'./results/datasets/{dataset_name}_mol'
-    name            = f'{dataset_name}_sub_{dataset_version}_{template_hash_version}'        
-
-    #Check for existence of the files in the given paths
-    if os.path.exists(f'{folder_path}/{name}.txt') and os.path.exists(f'{folder_path_mol}/{name}.pkl'):
-        return True
-    else:
-        return False
 
 
-def convert_and_save_subset(subset: list, subset_mol: list, dataset_name:str, retro_reac, dataset_version: str = '', template_hash_version: str = ''): 
-    '''
-    Saves the SMILES and Chem.mol subsets to a txt and to a pickle file, respectively.
 
-    --Inputs--
-    subset (list(str)):             list of SMILES strings to save
-    subset_mol (list(Chem.Mol)):    list of Chem.mol objects (same as subset but in mol format)
-    dataset_name (str):             name of the dataset (str) ex: GDB13S, USPTO. Prerequisite (for the module, not the function): The dataset divided in 100 different
-                                    files in the format {dataset_name}_i.txt for i from 1 to 100 must be present in the folder dataset_balance/data/
-    dataset_version (str):          version of the dataset (str) being any integer from 1 to 100
-    template_hash_version (str):    Allows to trace back the template to the templates dataframe, it is constructed as follows. 
-
-    --Returns--
-    None, but saves the subsets to f'./results/datasets/{dataset_name}/{dataset_name}_sub_{dataset_version}_{template_hash_version}.txt' (smiles subset) and
-    f'./results/datasets/{dataset_name}_mol/{dataset_name}_sub_{dataset_version}_{template_hash_version}.pkl' (mol subset)
-    '''
-    # Check for subset existence
-    if subset:
-
-        # Define paths and names
-        folder_path     = f'./results/datasets/{dataset_name}'
-        folder_path_mol = f'./results/datasets/{dataset_name}_mol'
-        name            = f'{dataset_name}_sub_{dataset_version}_{template_hash_version}'
-
-        temp_path       = f'./results/temp_files/{dataset_name}_temp'
-        temp_name       = f'{dataset_name}_temp_{template_hash_version}'
-        temp_list       = []
-        
-        #Create the folder if it does not exist (SMILES)
-        if not os.path.exists(folder_path):
-            os.makedirs(folder_path)
-
-        #Write the subset to a text file (SMILES)
-        with open(f'{folder_path}/{name}.txt', 'w') as f:
-            for item in subset:
-                f.write(item + '\n')
-
-            temp_list.append(f'{folder_path}/{name}.txt')
-
-        #Create the folder if it does not exist (Chem.Mol)
-        if not os.path.exists(folder_path_mol):
-            os.makedirs(folder_path_mol)
-        
-        #Save the subset to a pickle file (Chem.Mol)
-        with open(f'{folder_path_mol}/{name}.pkl', 'wb') as f:
-            pickle.dump(subset_mol, f)
-
-            temp_list.append(f'{folder_path_mol}/{name}.pkl')
-        
-        #Save the paths of saved subsets to a temp file to delete them once they are no longer needed
-        save_created_files_to_temp_file(temp_path, temp_name, temp_list)
-        print(f'Saved subset of {len(subset)} smiles from {dataset_name}_{dataset_version} for retro_reac: {retro_reac}')
-
-
-def extract_match_smiles_from_dataset(dataset:list, dataset_mol:list, template:str) -> list:
-    """
-    Creates subsets from a smiles dataset (and Chem.mol dataset) with canonicalized elements matching a certain SMARTS pattern template.
-
-    --Inputs--
-    dataset (list(str)):             list of smiles strings to extract the molecules matching the template from
-    dataset_mol (list(Chem.Mol)):    list of mol objects corresponding to the smiles strings
-    template (str):                  SMARTS pattern of the substructure to match
-
-    --Returns--
-    dataset_sub:        list of smiles strings containing the substructure matches. Subset of the input dataset.
-    dataset_sub_mol:    list of mol objects corresponding to the smiles strings containing the substructure matches. Subset of the input dataset_mol.
-    """
-    # Convert template to mol
-    template_mol    = Chem.MolFromSmarts(template)
-
-    # Find indices of the substructure matches in the dataset
-    match_ind = [i for i, mol in enumerate(dataset_mol) if mol.HasSubstructMatch(template_mol)]
-
-    # Create a subset of canonicalized smiles containing the substructure matches 
-    dataset_match = [dataset[i] for i in match_ind]
-    processes = multiprocessing.cpu_count() - 2
-    pool = multiprocessing.Pool(processes=processes)
-    dataset_sub = pool.map(canonicalize, dataset_match)
-    pool.close()
-    pool.join()
-
-    # Create subset of mol objects containing the substructure matches
-    dataset_sub_mol = [dataset_mol[i] for i in match_ind]
-    return dataset_sub, dataset_sub_mol
-
-
-#D_part2_framework functions ------------------------------
-
-
-def load_subsets(retro_reac: str = '', dataset_version: str = '', template_hash_version: str = '', dataset_name: str = '')-> list: 
-    '''
-    Loads both SMILES and mol subsets composed of molecules from f'{dataset_name}_{dataset_version}' dataset containing SMARTS substructure retro_reac 
-    
-    --Inputs--
-    retro_reac (str):             SMARTS pattern of the substructure to match
-    dataset_version (str):        version of the dataset (str) being any integer from 1 to 1000.
-    template_hash_version (str):  Allows to trace back the template to the templates dataframe, it is constructed as follows. 
-                                    template_hash_version = f"{template_hash}_{template_line}"
-    dataset_name (str):           name of the dataset (str) ex: GDB13S, USPTO. Prerequisite (for the module, not the function): The dataset divided in 1000 different
-                                    files in the format {dataset_name}_i.txt for i from 1 to 1000 must be present in the folder dataset_balance/data/
-
-    --Returns--
-    dataset_sub (list):           list of smiles strings containing the substructure matches. Subset of the input dataset.
-    dataset_sub_mol (list):       list of mol objects corresponding to the smiles strings containing the substructure matches. Subset of the input dataset_mol.
-    '''
-    # Define paths and file names
-    folder_path     = f'./results/datasets/{dataset_name}'
-    folder_path_mol = f'./results/datasets/{dataset_name}_mol'
-    name            = f'{dataset_name}_sub_{dataset_version}_{template_hash_version}'
-
-    # Load the subsets if they exist
-    try:
-        with open(f'{folder_path}/{name}.txt', 'r') as f:
-            dataset_sub = [line.strip() for line in f]
-        with open(f'{folder_path_mol}/{name}.pkl', 'rb') as f:
-            dataset_sub_mol = pickle.load(f)
-        return dataset_sub, dataset_sub_mol
-
-    # Print error message if the subsets do not exist
-    except FileNotFoundError:
-        print(f'No subsets found for retro_reac: {retro_reac} in dataset version: {dataset_version}')
-        return [], []
-    
-    except EOFError:
-        print(f'Pickle load ran out of input at retro_reac: {retro_reac} in dataset version: {dataset_version}')
-        return [], []
-
-
-def save_rxns(rxns_list, retro_reac, retro_template, dataset_version: str = '', template_hash_version: str = '', dataset_name: str = ''):
-    '''
-    Saves the rxn list in a txt file, retro_reac is the SMARTS pattern of the product of the reaction,
-    retro_template is the template that is applied on retro_reac
-
-    --Inputs--
-    rxns_list (list):               list of reactions in a smiles format
-    retro_reac (str):               SMARTS pattern of the substructure to match
-    retro_template (str):           reaction template in SMART format
-    dataset_version (str):          version of the dataset (str) being any integer from 1 to 1000.
-    template_hash_version (str):    Allows to trace back the template to the templates dataframe, it is constructed as follows.
-                                    template_hash_version = f"{template_hash}_{template_line}"
-    dataset_name (str):             name of the dataset (str) ex: GDB13S, USPTO. Prerequisite (for the module, not the function): The dataset divided in 1000 different
-                                    files in the format {dataset_name}_i.txt for i from 1 to 1000 must be present in the folder dataset_balance/data/
-
-    --Returns--
-    None, but creates a txt file containing the rxns_list
-    '''
-
-    #Remove the slash from the template
-    retro_template = retro_template.replace('/', 'slash')
-
-    if rxns_list:
-        folder_path     = f'./results/created_rxns/{dataset_name}'
-        name            = f'{dataset_name}_sub_{dataset_version}_{template_hash_version}'
-
-        temp_path       = f'./results/temp_files/{dataset_name}_temp'
-        temp_name       = f'{dataset_name}_temp_{template_hash_version}'
-        temp_list       = []
-
-        # Create the folder if it does not exist
-        if not os.path.exists(folder_path):
-            os.makedirs(folder_path)
-
-        with open(f'{folder_path}/{name}.txt', 'w') as f:
-            for item in rxns_list:
-                f.write(item + '\n')
-
-            temp_list.append(f'{folder_path}/{name}.txt')
-
-        # Save the paths of saved subsets to a temp file to delete them once they are no longer needed
-        save_created_files_to_temp_file(temp_path, temp_name, temp_list)
-        print(f'Created {len(rxns_list)} reactions for retro_reac: {retro_reac} and retro_template: {retro_template}')
-
-    else:
-        print(f'No reactions created for retro_reac: {retro_reac} and retro_template: {retro_template}')
 
 
 
@@ -347,51 +148,6 @@ def format_reaction(reactants_tuple: tuple, smi : str) -> list:
     return rxn
 
 
-def process_retro_template(retro_reac, retro_template, dataset_version: str = '', template_hash_version: str = '', dataset_name: str = ''):
-    '''
-    Function creating fictive reactions from a given retrosynthetic reaction template 'retro_template' applied on molecules containing a given substructure 'retro_reac'. 
-    It is subdivised in several steps: 
-        1) load the subsets of molecules containing the substructure 'retro_reac' from the dataset version 'dataset_version' (created in c_part1_framework.py module)
-        2) apply the template 'retro_template' on the molecules from the subsets
-        3) format the reactions in a smiles format
-        4) save the reactions in a txt file.
-    
-    --Inputs--
-    retro_reac (str):               SMARTS pattern of the substructure to match
-    retro_template (str):           reaction template in SMART format
-    dataset_version (str):          version of the dataset (str) being any integer from 1 to 1000.
-    template_hash_version (str):    Allows to trace back the template to the templates dataframe, it is constructed as follows.
-                                    template_hash_version = f"{template_hash}_{template_line}"
-    dataset_name (str):             name of the dataset (str) ex: GDB13S, USPTO. Prerequisite (for the module, not the function): The dataset is divided in 1000 different parts
-
-    --Returns--
-    None, but creates a txt file containing the fictive reactions 'rxns_list'
-    '''
-    # Load the subsets of molecules containing the substructure 'retro_reac' from the dataset version 'dataset_version'
-    dataset_sub, dataset_sub_mol = load_subsets(retro_reac, dataset_version, template_hash_version, dataset_name)
-    
-    # Abort if no subset is found
-    if not dataset_sub:
-        return
-
-    # Apply reaction template on the product molecules from datasets
-    dataset_sub_app_temp = apply_rxn_template_on_mols_list(dataset_sub_mol, retro_template)
-
-    # Find indices of empty elements and remove them from both lists
-    ind_remove = [result == () for result in dataset_sub_app_temp]
-    dataset_sub_app_temp_sort = [dataset_sub_app_temp[i] for i in range(len(dataset_sub_app_temp)) if not ind_remove[i]]
-    dataset_sub_sort = [dataset_sub[i] for i in range(len(dataset_sub)) if not ind_remove[i]]
-
-    # Create fictive reactions as reactants>>product in a smiles format
-    fictive_rxns_list = [format_reaction(dataset_sub_app_temp_sort[k], dataset_sub_sort[k]) for k in range(len(dataset_sub_sort))]
-    fictive_rxns_list = list(chain.from_iterable(fictive_rxns_list))
-    try:
-        fictive_rxns_list.remove('>>') # Remove empty reactions
-    except ValueError:
-        pass
-
-    # Save in a txt file
-    save_rxns(fictive_rxns_list, retro_reac, retro_template, dataset_version, template_hash_version, dataset_name)
 
 
 #E_part3_framework functions ------------------------------
@@ -1343,27 +1099,27 @@ def subset_n_random_reactions_per_template(full_df_conf, target, random_seed=42)
             df_concat = pd.concat([df_concat, df])
     return df_concat
 
-def subset_n_random_reactions_per_template_opti(full_df_conf, target, random_seed=42): # TO BE TESTED
-    np.random.seed(random_seed)  # Set the random seed for reproducibility
-    df_concat = pd.DataFrame()
+def sample_rows_per_template(df, template_column, x, random_seed=42):
+    # Group by the 'retro_template' column
+    grouped = df.groupby(template_column)
     
-    # Iterate over each unique 'template_line'
-    for template_line in tqdm(full_df_conf['template_line'].unique()):
-        # Filter the dataframe by the current 'template_line'
-        df = full_df_conf[full_df_conf['template_line'] == template_line]
-        len_df = len(df)
-        
-        # Select 'target' random samples if the dataframe length is greater or equal to target
-        if len_df >= target:
-            sampled_df = df.sample(n=target, random_state=random_seed)
-        else:
-            # Take all rows if the length is less than target
-            sampled_df = df
-        
-        # Concatenate the sampled dataframe
-        df_concat = pd.concat([df_concat, sampled_df], ignore_index=True)
+    # For each group, take either 'x' rows or all rows if the group has fewer than 'x' rows
+    sampled_df = grouped.apply(lambda group: group.sample(n=x, random_state=random_seed) if len(group) >= x else group)
     
-    return df_concat
+    # Reset the index to avoid issues from the groupby operation
+    sampled_df = sampled_df.reset_index(drop=True)
+    
+    return sampled_df
+
+def determine_final_row_count(df, template_column, x):
+    # Group by the 'retro_template' column and count the number of rows in each group
+    counts_per_template = df.groupby(template_column).size()
+    
+    # For each unique template, add either 'x' or the actual count if it's less than 'x'
+    total_rows = counts_per_template.apply(lambda count: min(count, x)).sum()
+    
+    return total_rows
+
 
 # Functions related to split the models and save the txt files
 
