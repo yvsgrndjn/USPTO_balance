@@ -4,13 +4,9 @@ from src.uspto_balance.utils.helper_functions import find_input_type
 class DataHandler:
     def __init__(self, data=None, file_path= None):
         
-        self.data = None
-        if data is not None:
-            self.data = data
-        elif file_path:
-            self.file_path = file_path
-            self.datatype = find_input_type(file_path)
-            self.data = self.load_data()
+        self.file_path = file_path
+        self.datatype = find_input_type(file_path)
+
     
     def load_data(self): 
         if self.datatype == 'csv':
@@ -30,7 +26,7 @@ class DataHandler:
     
     def _load_csv_data(self):
         try:
-            return pd.read_csv(self.file_path)
+            return pd.read_csv(self.file_path, index_col=0)
         
         except Exception as e:
             raise ValueError('Error loading csv file:', e)

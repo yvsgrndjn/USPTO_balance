@@ -19,10 +19,10 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description="Generate and validate fictive reactions for a given template with flexible options.")
     
     # Optional arguments to override config settings
-    parser.add_argument('--folder_path', type=str, default=FOLDER_PATH, help="Folder from which the equilibration was run")
+    parser.add_argument('--folder-path', type=str, default=FOLDER_PATH, help="Folder from which the equilibration was run")
     parser.add_argument('--dataset-name', type=str, default=DATASET_NAME, help="Name of the dataset.")
     parser.add_argument('--df-template-path', type=str, default=DF_TEMP_PATH ,help= "Path of the dataframe containing the templates to enrich.")
-    parser.add_argument('--stats_path', type=str, default=STATS_PATH, help="Path where the statistics of the different enrichments are saved")
+    parser.add_argument('--stats-path', type=str, default=STATS_PATH, help="Path where the statistics of the different enrichments are saved")
     parser.add_argument('--fraction-path', type=str, default=FRAC_PATH, help="Path to the first fraction of the dataset (used to determine the length of each fraction)")
     parser.add_argument('--path-to-save-stats', type=str, default=PATH_SAVE_STATS, help=" Path to save the final statistics file of the enrichment")
     parser.add_argument('--log', type=bool, default=False, help="Saving logs to output.log file. Default False")
@@ -34,7 +34,7 @@ def main():
     # initialize datahandler
     datahandler = DataHandler(file_path=args.df_template_path)
     # load df_templates
-    df_templates = datahandler.data
+    df_templates = datahandler.load_data()
 
     # reunite all the stats files into a single dataframe
     df_template_stats = bw.load_stats_csv_into_df_old(args.stats_path, args.dataset_name, df_templates)

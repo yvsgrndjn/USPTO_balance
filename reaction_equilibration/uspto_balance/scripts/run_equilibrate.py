@@ -11,9 +11,6 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from config_equilibrate import (FOLDER_PATH, DATASET_NAME, RETRO_REACTANT, RETRO_TEMPLATE, TEMPLATE_LINE, 
                     TEMPLATE_FREQUENCY, FREQUENCY_TARGET, T2_MODEL_PATH, T3_MODEL_PATH, 
                     N_JOBS, RANDOM_STATE)
-from src.uspto_balance.dataset_class import Dataset
-from src.uspto_balance.find_matches_and_format import FindMatchesApplyTemplateFormatReactions
-from src.uspto_balance.validate_reactions_TTL import ValidateReactionsWithTTL
 from src.uspto_balance.equilibrate import Equilibrate
 
 def parse_arguments():
