@@ -17,12 +17,12 @@ git clone -b refactor git@github.com:yvsgrndjn/USPTO_balance.git
 
 ### 1. if you want to start by extracting the retrosynthetic templates from your set of reactions:
 ```
-cd template_extraction/
+cd reaction_equilibration/template_extraction/
 ```
 and follow instructions there for environment installation
 
 ### 2. if you already have the templates you are wishing to enrich, skip directly to the uspto_balance folder
 ```
-cd uspto_balance/
+cd reaction_equilibration/uspto_balance/
 ```
  and follow instructions there for environment installation
