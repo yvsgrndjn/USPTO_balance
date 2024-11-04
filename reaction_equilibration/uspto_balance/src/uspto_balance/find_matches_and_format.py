@@ -21,8 +21,8 @@ class FindMatchesApplyTemplateFormatReactions:
         # rxn retro_template
         self.retro_template_rxn       = AllChem.ReactionFromSmarts(self.retro_template)
         # datasets paths
-        self.dataset_path             = f'{self.folder_path}data/{self.dataset_name}_{self.dataset_version}.txt'
-        self.dataset_mol_path         = f'{self.folder_path}data/{self.dataset_name}_{self.dataset_version}_mol.pkl'
+        self.dataset_path             = f'{self.folder_path}data/datasets/{self.dataset_name}/{self.dataset_name}_{self.dataset_version}.txt'
+        self.dataset_mol_path         = f'{self.folder_path}data/datasets/{self.dataset_name}/{self.dataset_name}_{self.dataset_version}_mol.pkl'
 
 
 
