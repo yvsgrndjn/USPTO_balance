@@ -23,7 +23,8 @@ class Equilibrate:
         self.folder_path        = run_from_path
 
         self.stats_file_path    = f'{self.folder_path}results/saved_rxns/{self.dataset_name}/full_{self.dataset_name}_stats_template_{template_line}.csv'
-        self.results_csv_path   = f'{self.folder_path}results/saved_rxns/{self.dataset_name}/full_{self.dataset_name}_template_{template_line}.csv'
+        self.results_csv_folder_path = f'{self.folder_path}results/saved_rxns/{self.dataset_name}/'
+        self.results_csv_path   = f'{self.results_csv_folder_path}full_{self.dataset_name}_template_{template_line}.csv'
         self.counter            = 0
         self.num_matches        = 0
         self.num_created_rxns   = 0
@@ -54,6 +55,10 @@ class Equilibrate:
 
     def get_dataset_version(self):
         return self.index_list[self.counter]
+
+    def create_folder_if_not_exists(self, folder_path: str):
+        if not os.path.exists(folder_path):
+            os.makedirs(folder_path)
 
     def append_df_to_csv(self, path_to_csv: str, df_to_append: pd.DataFrame):
         '''
@@ -116,6 +121,7 @@ class Equilibrate:
             print(f'Total of Validated ({self.num_val_rxns}) and confident >0.95 ({self.num_val_conf_rxns}) reactions out of the target of {self.frequency_target} for retro_reac: {self.retro_reac} and retro_template: {self.retro_template}')
             
             # append saved reactions until enrichment target is reached
+            self.create_folder_if_not_exists(self.results_csv_folder_path)
             self.append_df_to_csv(self.results_csv_path, val_rxns_df)
 
             # update counters
