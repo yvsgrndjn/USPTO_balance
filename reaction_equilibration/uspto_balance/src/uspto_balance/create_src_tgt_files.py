@@ -1,14 +1,18 @@
 import os
-import src.uspto_balance.retrosynthesis_utilities as retrosynthesis_utilities
+import pandas as pd
 from tqdm import tqdm
+import src.uspto_balance.retrosynthesis_utilities as retrosynthesis_utilities
+
 
 class CreateSrcTgtFiles:
-    def __init__(self, mapped_smiles, splits, dataset_name, base_path, target_rxns_per_template):
+    def __init__(self, mapped_smiles, splits, temp_list, dataset_name, base_path, target_rxns_per_template):
         self.mapped_smiles                  = mapped_smiles
         self.splits                         = splits
+        self.temp_list                      = temp_list
         self.dataset_name                   = dataset_name
         self.base_path                      = base_path
         self.target_reactions_per_template  = target_rxns_per_template
+        self.temp_series = pd.Series()
         
         # Process the SMILES and tag reactions
         print('Obtaining reagents from mapped reactions...')
@@ -25,11 +29,12 @@ class CreateSrcTgtFiles:
                           self.splits, 
                           self.reagents, 
                           self.tagged_reaction_AC, 
+                          self.temp_list, 
                           ]
         iserror = [el == 'ERROR' for el in self.tagged_reaction_AC]
         error_indices = [el for el in range(len(self.tagged_reaction_AC)) if iserror[el]]
         cleaned_lists = retrosynthesis_utilities.remove_elements_at_indices(lists_to_clean, error_indices)
-        self.mapped_smiles, self.splits, self.reagents, self.tagged_reaction_AC = cleaned_lists
+        self.mapped_smiles, self.splits, self.reagents, self.tagged_reaction_AC, self.temp_list = cleaned_lists
 
     def get_train_test_valid_indices(self, data_set):
         """Find indices for 'TRAIN', 'TEST', or 'VALID' splits."""
@@ -71,7 +76,7 @@ class CreateSrcTgtFiles:
         file_name = '_'.join(parts[1:]) + '.txt'
 
         # Create directory if it doesn't exist
-        dir_path = os.path.join(self.base_path,'data/models', folder_name, self.dataset_name, str(self.target_reactions_per_template)+'_rxns_per_template')
+        dir_path = os.path.join(self.base_path,'data/models', folder_name, self.dataset_name, self.target_reactions_per_template+'_rxns_per_template')
         os.makedirs(dir_path, exist_ok=True)
 
         # Save the list to the file
@@ -101,6 +106,8 @@ class CreateSrcTgtFiles:
         print('Tokenizing reagents...')
         self.tok_reagents = list(map(retrosynthesis_utilities.tokenize, self.reagents))
 
+        self.temp_series = pd.Series(self.temp_list)
+
         for dataset_type in ['TRAIN', 'TEST', 'VALID']:
 
             print('Obtaining splits indices')
@@ -111,6 +118,23 @@ class CreateSrcTgtFiles:
 
             print('Saving files...')
             self.save_files(result, dataset_type.lower())
+
+            # added after to get template lists for the different splits, could be cleaner
+            if self.temp_list =='':
+                print('In CreateSrcTgtFiles.process_and_save_all(): No template column name provided. No template files will be saved.') 
+            else:
+                temp_series_split = self.temp_series.iloc[indices]
+                file_path = os.path.join(
+                    self.base_path,
+                    'data/models',
+                    'templates',
+                    self.dataset_name,
+                    f"{self.target_reactions_per_template}_rxns_per_template/templates_{dataset_type}.txt",
+                    )
+                if not os.path.exists(os.path.dirname(file_path)):
+                    os.makedirs(os.path.dirname(file_path))
+                
+                temp_series_split.to_csv(file_path, header=False)
 
 #import pandas as pd
 #

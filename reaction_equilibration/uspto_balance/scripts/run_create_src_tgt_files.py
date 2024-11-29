@@ -7,7 +7,7 @@ import argparse
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # Import configurations and modules
-from config_create_src_tgt_files import (BASE_DIR, FOLDER_PATH, DATASET_NAME, TARGET_RXNS_PER_TEMPLATE, PATH_SUBSET_SPLIT_CSV)
+from config_create_src_tgt_files import (BASE_DIR, FOLDER_PATH, DATASET_NAME, TARGET_RXNS_PER_TEMPLATE, PATH_SUBSET_SPLIT_CSV, TEMPLATE_COLUMN_NAME)
 from src.uspto_balance.data_handler import DataHandler
 from src.uspto_balance.create_src_tgt_files import CreateSrcTgtFiles
 
@@ -19,6 +19,7 @@ def parse_arguments():
     parser.add_argument('--dataset-name', type=str, default=DATASET_NAME, help='Name of the dataset')
     parser.add_argument('--path-subset-split-csv', type=str, default=PATH_SUBSET_SPLIT_CSV, help='Path to the csv dataset of all created and validated reactions with a target number of reactions per template')
     parser.add_argument('--target-rxns-per-template', type=int, default=TARGET_RXNS_PER_TEMPLATE, help='Target number of reactions per template in the final dataset')
+    parser.add_argument('--temp-col-name', type=str, default=TEMPLATE_COLUMN_NAME, help='column name containing the (retro) templates')
     return parser.parse_args()
 
 def main():
@@ -37,10 +38,27 @@ def main():
     # get the mapped smiles and splits, delete the dataframe
     mapped_rxns = df['mapped_rxns'].tolist()
     splits = df['Set'].tolist()
+
+    try:
+        temp_list = df[args.temp_col_name].tolist()
+    except:
+        print('No appropriate template column name provided for the template column. No template column will be used.')
+        temp_list = ''
+
+    if args.target_rxns_per_template == 0:
+        target_rxns_per_template = ''
+    else: 
+        target_rxns_per_template = str(args.target_rxns_per_template)
+
     del df
 
     # initialize the CreateSrcTgtFiles class
-    create_src_tgt_files = CreateSrcTgtFiles(mapped_rxns, splits, args.dataset_name, BASE_DIR, args.target_rxns_per_template)
+    create_src_tgt_files = CreateSrcTgtFiles(mapped_smiles = mapped_rxns, 
+                                             splits = splits, 
+                                             temp_list = temp_list, 
+                                             dataset_name = args.dataset_name, 
+                                             base_path = BASE_DIR, 
+                                             target_rxns_per_template = target_rxns_per_template)
 
     # create source and target files
     create_src_tgt_files.process_and_save_all()
