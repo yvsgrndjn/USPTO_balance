@@ -47,9 +47,9 @@ class CreateSrcTgtFiles:
             'T1_tgt': self.tok_A,
             'T2_src': self.tok_reaction_AC,
             'T2_tgt': self.tok_reagents,
-            'T3_src': None,  # T1_tgt assigned later
+            'T3_src': self.tok_AB, 
             'T3_tgt': self.tok_C,
-            'T3FT_src': self.tok_tagged_A,
+            'T3FT_src': self.tok_tagA_B,
             'T3FT_tgt': None,  # T3_tgt assigned later
         }
 
@@ -58,8 +58,7 @@ class CreateSrcTgtFiles:
             if source is not None:
                 result[key] = list(retrosynthesis_utilities.yield_elements(source, indices))
 
-        # Assign 'T3' and 'T3FT' specific cases
-        result['T3_src'] = result['T1_tgt']
+        # assign T3FT_tgt
         result['T3FT_tgt'] = result['T3_tgt']
         return result
 
@@ -95,7 +94,6 @@ class CreateSrcTgtFiles:
         
         print('Tokenizing non tagged A>>C...')
         self.tok_reaction_AC = list(map(retrosynthesis_utilities.tokenize, self.reaction_AC))
-        # Generate tok_A and tok_C
 
         print('Obtaining non-tagged A and non-tagged C...')
         self.tok_A, self.tok_C = zip(*[el.split(' > > ') for el in self.tok_reaction_AC])
@@ -105,6 +103,14 @@ class CreateSrcTgtFiles:
         
         print('Tokenizing reagents...')
         self.tok_reagents = list(map(retrosynthesis_utilities.tokenize, self.reagents))
+
+        #for T3 we want tok(A > B)
+        print('preparing T3 source...')
+        self.tok_AB = [f"{a} > {b}" for a, b in zip(self.tok_A, self.tok_reagents)]
+
+        #for T3FT we want tok(tag(A) > B)
+        print('preparing T3FT source...')
+        self.tok_tagA_B = [f"{a} > {b}" for a, b in zip(self.tok_tagged_A, self.tok_reagents)]
 
         self.temp_series = pd.Series(self.temp_list)
 
