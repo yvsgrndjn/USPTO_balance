@@ -24,6 +24,7 @@ def parse_arguments():
     parser.add_argument('--path-to-save-subset-split', type=str, default=PATH_TO_SAVE_SUBSET_SPLIT, help='Path to save the csv dataset of all created and validated reactions with a target number of reactions per template')
     parser.add_argument('--train-size', type=float, default=TRAIN_SET_PROP, help='Proportion of the dataset to include in the training set')
     parser.add_argument('--skip-appending-rxns-part', type=bool, default=False, help='Skip the appending reactions part and only split the dataset')
+    parser.add_argument('--is-data-split-by-temp', type=bool, default=False, help='In the case of a reference dataset, have the splits been done according to templates? (i.e. are templates separated in different splits?')
     return parser.parse_args()
 
 def main():
@@ -39,7 +40,8 @@ def main():
                                  args.target_rxns_per_template, 
                                  args.path_to_save_subset_split, 
                                  args.train_size, 
-                                 args.skip_appending_rxns_part)
+                                 args.skip_appending_rxns_part, 
+                                 args.is_data_split_by_temp,)
     
     if args.skip_appending_rxns_part:
         build_dataset.split_dataset()

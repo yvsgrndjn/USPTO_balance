@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 from tqdm import tqdm
-import src.uspto_balance.retrosynthesis_utilities as retrosynthesis_utilities
+import uspto_balance.retrosynthesis_utilities as retrosynthesis_utilities
 
 
 class CreateSrcTgtFiles:

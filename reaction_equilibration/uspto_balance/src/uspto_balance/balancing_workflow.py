@@ -897,7 +897,7 @@ def append_saved_rxns_into_csv(path_to_folder: str, dataset_name: str, df_templa
         template_line = i
         retro_template = df_templates.at[i,'retro_templates']
         try:
-            df = pd.read_csv(f'{path_to_folder}/results/saved_rxns/{dataset_name}/full_{dataset_name}_template_{template_line}.csv')
+            df = pd.read_csv(f'{path_to_folder}results/saved_rxns/{dataset_name}/full_{dataset_name}__{template_line}.csv')
             df_to_append = pd.DataFrame(columns=['template_line', 'rxns', 'mapped_rxns', 'conf_scores'])
             df_to_append['rxns'] = df['rxns']
             df_to_append['mapped_rxns'] = df['mapped_rxns']
@@ -1089,6 +1089,43 @@ def stratified_train_val_test_split(group, train_size=0.8, valid_size=0.1, test_
         group = pd.concat([train, valid, test])
     
     return group
+
+def split_by_template_balanced(df, template_col='retro_template_r1_full_corr', train_size=0.8, valid_size=0.1, test_size=0.1):
+    assert train_size + valid_size + test_size == 1.0, "Train, validation, and test sizes must sum to 1."
+    
+    # Compute reaction count per template
+    template_counts = df[template_col].value_counts().reset_index()
+    template_counts.columns = [template_col, 'count']
+    
+    # Shuffle to avoid systematic biases
+    template_counts = template_counts.sample(frac=1, random_state=42).reset_index(drop=True)
+    
+    # Initialize cumulative counts and storage lists
+    train_templates, valid_templates, test_templates = [], [], []
+    train_count, valid_count, test_count = 0, 0, 0
+    total_reactions = len(df)
+    
+    # Assign templates while maintaining proportions
+    for _, row in template_counts.iterrows():
+        template, count = row[template_col], row['count']
+        
+        # Assign to the set with the lowest current proportion
+        if train_count + count <= train_size * total_reactions:
+            train_templates.append(template)
+            train_count += count
+        elif valid_count + count <= valid_size * total_reactions:
+            valid_templates.append(template)
+            valid_count += count
+        else:
+            test_templates.append(template)
+            test_count += count
+
+    # Assign split labels
+    df['Set'] = df[template_col].apply(
+        lambda x: 'TRAIN' if x in train_templates else 'VALID' if x in valid_templates else 'TEST'
+    )
+    
+    return df
 
 # Functions related to split the models and save the txt files
 
